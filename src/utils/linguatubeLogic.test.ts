@@ -18,6 +18,8 @@ import {
   generatePrintableTranscriptHtml,
   generateTranscriptCsv,
   detectCollocationAtWord,
+  buildDuoPracticeLesson,
+  gradeDuoWordBankAnswer,
   DEFAULT_LR_SETTINGS,
   INITIAL_SEED_CARDS,
   DEMO_DUAL_SUBTITLES,
@@ -182,3 +184,18 @@ test('rebuildCleanSentencesFromJson3 interpolates block captions proportionally 
   assert.equal(tokenizeSubtitleLine('text-to-image generator').filter((t) => t.isWord).length, 2);
   assert.equal(normalizePersian('كتاب‌هاي مفيد'), 'کتاب‌های مفید');
 });
+
+test('buildDuoPracticeLesson generates Match Pairs, Multiple Choice, and Word Bank questions even with <5 saved cards', () => {
+  const questions = buildDuoPracticeLesson([INITIAL_SEED_CARDS[0]]);
+  assert.ok(questions.length >= 5);
+  assert.equal(questions[0].type, 'match_pairs');
+  assert.equal(questions[0].matchPairs?.length, 5);
+  assert.equal(questions[1].type, 'multiple_choice');
+  assert.equal(questions[1].options?.length, 4);
+  const wbQuestion = questions.find((q) => q.type === 'word_bank');
+  assert.ok(wbQuestion && wbQuestion.targetTokens && wbQuestion.targetTokens.length > 0);
+  assert.equal(gradeDuoWordBankAnswer(wbQuestion.targetTokens, wbQuestion.targetTokens), true);
+  assert.equal(gradeDuoWordBankAnswer(['wrong'], wbQuestion.targetTokens), false);
+});
+
+

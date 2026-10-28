@@ -22,6 +22,8 @@ import { PlayerSimulatorView } from './components/PlayerSimulatorView';
 import { LeitnerCenterView, PortalSubView } from './components/LeitnerCenterView';
 import { ExtensionPackageView } from './components/ExtensionPackageView';
 import { CloudAccountModal } from './components/CloudAccountModal';
+import { BrandLogo } from './components/BrandLogo';
+import { DuoPracticeView } from './components/DuoPracticeView';
 import {
   auth,
   User,
@@ -46,17 +48,66 @@ const CARDS_STORAGE_KEY = 'cunt_academy_cards_v5';
 const SENTENCES_STORAGE_KEY = 'cunt_academy_sentences_v5';
 const SETTINGS_STORAGE_KEY = 'cunt_academy_settings_v5';
 
-export type MainNavSection = 'media' | 'phrasepump' | 'saved' | 'drills' | 'settings' | 'extension';
+export type MainNavSection =
+  | 'media'
+  | 'duopractice'
+  | 'phrasepump'
+  | 'saved'
+  | 'drills'
+  | 'settings'
+  | 'extension';
 
 export default function App() {
   const [activeNav, setActiveNav] = useState<MainNavSection>('media');
+  const [duoTheme, setDuoTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      const savedTheme = localStorage.getItem('cunt_academy_duo_theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') return savedTheme;
+    } catch {
+      // ignore
+    }
+    return 'dark';
+  });
+  const [userXp, setUserXp] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem('cunt_academy_duo_xp');
+      return raw ? Number(raw) || 340 : 340;
+    } catch {
+      return 340;
+    }
+  });
+  const [streakDays] = useState<number>(7);
   const [authUser, setAuthUser] = useState<User | AppAccountUser | null>(() =>
     getStoredDirectSession()
   );
   const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [cloudModalOpen, setCloudModalOpen] = useState<boolean>(false);
+  const [toolbarPopupOpen, setToolbarPopupOpen] = useState<boolean>(false);
+  const [popupFlipped, setPopupFlipped] = useState<boolean>(false);
+  const [popupBoxFilter, setPopupBoxFilter] = useState<number>(0);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', duoTheme);
+    try {
+      localStorage.setItem('cunt_academy_duo_theme', duoTheme);
+    } catch {
+      // ignore
+    }
+  }, [duoTheme]);
+
+  const handleEarnXp = (delta: number) => {
+    setUserXp((prev) => {
+      const next = prev + delta;
+      try {
+        localStorage.setItem('cunt_academy_duo_xp', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
 
   const [settings, setSettings] = useState<LanguageReactorSettings>(() => {
     try {
@@ -551,105 +602,108 @@ export default function App() {
   return (
     <div
       dir="ltr"
-      className="min-h-screen bg-[#0B0D14] text-slate-100 flex"
-      style={{
-        backgroundImage:
-          'radial-gradient(circle at 18% 0%, rgba(124, 92, 252, 0.14), transparent 40%), radial-gradient(circle at 85% 12%, rgba(16, 185, 129, 0.08), transparent 36%)',
-      }}
+      data-theme={duoTheme}
+      className="min-h-screen duo-surface-main flex"
     >
-      {/* LEFT SIDEBAR NAVIGATION (Trancy Aesthetic + Cunt Academy Brand) */}
-      <aside className="w-60 shrink-0 bg-[#121521]/95 border-r border-white/10 flex flex-col justify-between p-4 select-none backdrop-blur-xl">
-        <div className="space-y-4">
-          {/* Cunt Academy Logo Brand */}
+      {/* LEFT SIDEBAR NAVIGATION (100% Duolingo Feather Design System — Clean, Flat & Tactile) */}
+      <aside className="w-64 shrink-0 duo-surface-main border-r-2 duo-border-color flex flex-col justify-between p-5 select-none">
+        <div className="space-y-5">
+          {/* Cunt Academy Emblem Brand */}
           <div
             onClick={() => setActiveNav('media')}
-            className="flex items-center gap-3 px-2 py-1.5 cursor-pointer"
+            className="flex items-center gap-3 px-2 py-1 cursor-pointer"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 via-indigo-600 to-emerald-500 flex items-center justify-center font-black text-sm text-white shadow-lg shadow-violet-600/30">
-              CA
-            </div>
-            <div className="leading-tight">
-              <div className="text-[11px] text-violet-300 font-extrabold tracking-widest uppercase">
-                Cunt
-              </div>
-              <div className="text-base font-black tracking-wider text-white">ACADEMY</div>
-            </div>
+            <BrandLogo size={42} showWordmark={true} subtitle="Duolingo + LR + Anki" />
           </div>
 
-          {/* Cloud Account Quick Card in Sidebar */}
+          {/* Cloud Account Quick Card in Sidebar (Tactile 3D Card) */}
           <button
             type="button"
             data-testid="sidebar-cloud-account-btn"
             onClick={() => setCloudModalOpen(true)}
-            className={`w-full text-left p-2.5 rounded-xl border transition-all ${
+            className={`w-full text-left p-3 rounded-2xl border-2 border-b-4 transition-all active:border-b-0 active:translate-y-[4px] ${
               authUser
-                ? 'bg-emerald-500/15 border-emerald-500/40 hover:bg-emerald-500/20'
-                : 'bg-violet-600/15 border-violet-500/40 hover:bg-violet-600/25'
+                ? 'bg-[#58CC02]/15 border-[#58CC02]'
+                : 'duo-surface-secondary duo-border-color'
             }`}
           >
             {authUser ? (
               <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-emerald-500 text-slate-950 font-black flex items-center justify-center text-xs shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-[#58CC02] border-b-2 border-[#58A700] text-white font-black flex items-center justify-center text-xs shrink-0">
                   {(authUser.displayName || authUser.email || 'U').slice(0, 1).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[11px] font-extrabold text-emerald-300 truncate">
+                  <div className="text-[11px] font-extrabold text-[#58CC02] truncate">
                     ☁ اکانت جیمیل متصل شد
                   </div>
-                  <div className="text-[10px] font-mono text-slate-300 truncate">
+                  <div className="text-[10px] font-mono duo-text-muted truncate">
                     {authUser.email}
                   </div>
                 </div>
               </div>
             ) : (
               <div className="space-y-0.5" dir="rtl">
-                <div className="text-[11px] font-extrabold text-violet-200 flex items-center justify-between">
-                  <span>☁ ورود با جیمیل + دامین عمومی</span>
-                  <span className="text-[10px] text-emerald-300">رایگان</span>
+                <div className="text-xs font-extrabold flex items-center justify-between">
+                  <span>☁ ورود با جیمیل</span>
+                  <span className="px-2 py-0.5 rounded-lg bg-[#58CC02] text-white text-[10px] font-black">
+                    رایگان
+                  </span>
                 </div>
-                <div className="text-[10px] text-slate-400">
-                  همگام‌سازی فلش‌کارت‌ها و اکستنشن روی همه دستگاه‌ها
+                <div className="text-[11px] duo-text-muted font-bold">
+                  سینک خودکار فلش‌کارت‌ها و اکستنشن
                 </div>
               </div>
             )}
           </button>
 
-          {/* Main Sidebar Navigation Items */}
-          <nav className="space-y-1 text-xs font-bold">
+          {/* Main Duolingo Pill Navigation Items */}
+          <nav className="space-y-2 text-xs font-extrabold">
             <button
               type="button"
               data-testid="nav-media"
               onClick={() => setActiveNav('media')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                activeNav === 'media'
-                  ? 'bg-violet-600/25 text-white border border-violet-500/45 shadow-sm'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-              }`}
+              className={`duo-nav-item ${activeNav === 'media' ? 'is-active' : ''}`}
             >
-              <span className="flex items-center gap-2.5">
-                <span className="text-violet-400">▶</span>
-                <span>YouTube Studio</span>
+              <span className="flex items-center gap-3">
+                <span className="w-7 h-7 rounded-xl bg-[#1CB0F6] border-b-2 border-[#1899D6] text-white flex items-center justify-center text-xs">
+                  ▶
+                </span>
+                <span>ویدیو و زیرنویس (Learn)</span>
               </span>
-              <span className="text-[10px] font-mono text-violet-300">LR+Trancy</span>
+            </button>
+
+            <button
+              type="button"
+              data-testid="nav-duopractice"
+              onClick={() => setActiveNav('duopractice')}
+              className={`duo-nav-item ${activeNav === 'duopractice' ? 'is-active' : ''}`}
+            >
+              <span className="flex items-center gap-3">
+                <span className="w-7 h-7 rounded-xl bg-[#58CC02] border-b-2 border-[#58A700] text-white flex items-center justify-center text-xs">
+                  🎯
+                </span>
+                <span>تمرین دولینگویی (Duo)</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-xl bg-[#FFC800] border-b-2 border-[#E5B400] text-[#3C3C3C] font-black text-[10px]">
+                NEW
+              </span>
             </button>
 
             <button
               type="button"
               data-testid="nav-phrasepump"
               onClick={() => setActiveNav('phrasepump')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                activeNav === 'phrasepump'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/45 shadow-sm'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-              }`}
+              className={`duo-nav-item ${activeNav === 'phrasepump' ? 'is-active' : ''}`}
             >
-              <span className="flex items-center gap-2.5">
-                <span className="text-emerald-400">⚡</span>
-                <span>AnkiDroid Flashcards</span>
+              <span className="flex items-center gap-3">
+                <span className="w-7 h-7 rounded-xl bg-[#FF9600] border-b-2 border-[#CC7800] text-white flex items-center justify-center text-xs">
+                  ⚡
+                </span>
+                <span>فلش‌کارت AnkiDroid</span>
               </span>
               <span
                 data-testid="sidebar-anki-due-badge"
-                className="px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-mono text-[10px]"
+                className="px-2 py-0.5 rounded-xl bg-[#FF9600] border-b-2 border-[#CC7800] text-white font-mono text-[10px] font-black"
               >
                 {ankiCounts.totalDueToday}
               </span>
@@ -659,18 +713,13 @@ export default function App() {
               type="button"
               data-testid="nav-saved"
               onClick={() => setActiveNav('saved')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                activeNav === 'saved'
-                  ? 'bg-violet-600/25 text-white border border-violet-500/45'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-              }`}
+              className={`duo-nav-item ${activeNav === 'saved' ? 'is-active' : ''}`}
             >
-              <span className="flex items-center gap-2.5">
-                <span className="text-amber-400">📚</span>
-                <span>Saved Words &amp; Idioms</span>
-              </span>
-              <span className="text-[10px] font-mono text-slate-400">
-                {cards.length}
+              <span className="flex items-center gap-3">
+                <span className="w-7 h-7 rounded-xl bg-[#CE82FF] border-b-2 border-[#A568CC] text-white flex items-center justify-center text-xs">
+                  📚
+                </span>
+                <span>بانک لغات ({cards.length})</span>
               </span>
             </button>
 
@@ -678,32 +727,27 @@ export default function App() {
               type="button"
               data-testid="nav-drills"
               onClick={() => setActiveNav('drills')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                activeNav === 'drills'
-                  ? 'bg-violet-600/25 text-white border border-violet-500/45'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-              }`}
+              className={`duo-nav-item ${activeNav === 'drills' ? 'is-active' : ''}`}
             >
-              <span className="flex items-center gap-2.5">
-                <span className="text-sky-400">🎙</span>
-                <span>Shadowing &amp; Recall</span>
+              <span className="flex items-center gap-3">
+                <span className="w-7 h-7 rounded-xl bg-[#FF4B4B] border-b-2 border-[#EA2B2B] text-white flex items-center justify-center text-xs">
+                  🎙
+                </span>
+                <span>شنیداری و دیکته</span>
               </span>
-              <span className="text-[10px] font-mono text-emerald-400">FREE</span>
             </button>
 
             <button
               type="button"
               data-testid="nav-settings"
               onClick={() => setActiveNav('settings')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                activeNav === 'settings'
-                  ? 'bg-violet-600/25 text-white border border-violet-500/45'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-              }`}
+              className={`duo-nav-item ${activeNav === 'settings' ? 'is-active' : ''}`}
             >
-              <span className="flex items-center gap-2.5">
-                <span className="text-slate-300">⚙</span>
-                <span>Subtitle &amp; LR Settings</span>
+              <span className="flex items-center gap-3">
+                <span className="w-7 h-7 rounded-xl bg-[#1CB0F6] border-b-2 border-[#1899D6] text-white flex items-center justify-center text-xs">
+                  ⚙
+                </span>
+                <span>تنظیمات زیرنویس</span>
               </span>
             </button>
 
@@ -711,101 +755,349 @@ export default function App() {
               type="button"
               data-testid="nav-extension"
               onClick={() => setActiveNav('extension')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                activeNav === 'extension'
-                  ? 'bg-violet-600/25 text-white border border-violet-500/45'
-                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-              }`}
+              className={`duo-nav-item ${activeNav === 'extension' ? 'is-active' : ''}`}
             >
-              <span className="flex items-center gap-2.5">
-                <span className="text-violet-400">🧩</span>
-                <span>Install (Zen &amp; Chrome)</span>
+              <span className="flex items-center gap-3">
+                <span className="w-7 h-7 rounded-xl bg-[#58CC02] border-b-2 border-[#58A700] text-white flex items-center justify-center text-xs">
+                  🧩
+                </span>
+                <span>نصب اکستنشن یوتیوب</span>
               </span>
-              <span className="text-[10px] font-mono text-emerald-400">v4.6 Cloud</span>
             </button>
           </nav>
         </div>
 
-        {/* Bottom Download Extension CTAs (Zen/Firefox + Chrome) */}
-        <div className="pt-4 border-t border-white/10 space-y-2">
+        {/* Bottom Tactile 3D Download Extension CTAs */}
+        <div className="pt-4 border-t-2 duo-border-color space-y-2.5">
           <a
             href="/cunt-academy-zen-firefox.xpi"
             download="cunt-academy-zen-firefox.xpi"
-            className="block w-full text-center py-2 px-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg"
+            className="duo-btn duo-btn-purple w-full py-2.5 px-3 text-xs text-center"
           >
             ⬇ نصب Zen / Firefox (.xpi)
           </a>
           <a
             href="/cunt-academy-chrome.zip"
             download="cunt-academy-chrome.zip"
-            className="block w-full text-center py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg"
+            className="duo-btn duo-btn-green w-full py-2.5 px-3 text-xs text-center"
           >
             ⬇ نصب Chrome (.zip)
           </a>
-          <div className="text-[10px] text-slate-500 text-center">
-            Cunt Academy v4.6 • Gmail Cloud Sync
-          </div>
         </div>
       </aside>
 
       {/* MAIN VIEWPORT CONTENT */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Header Strip */}
-        <header className="px-6 py-3 bg-[#121521]/90 border-b border-white/10 flex flex-wrap items-center justify-between gap-4 backdrop-blur-md">
-          <div className="flex items-center gap-3">
-            <h1 className="text-sm font-extrabold text-white">
-              Cunt Academy v4.6 — سیستم فلش‌کارت AnkiDroid SM-2 + سینک ابری جیمیل + دامین عمومی
-            </h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[11px] font-semibold">
-              Gmail Sync + Anki SM-2 + Lexa AI
-            </span>
+        {/* DUOLINGO STATUS BAR (HEADER) */}
+        <header className="px-6 py-3.5 duo-surface-main border-b-2 duo-border-color flex flex-wrap items-center justify-between gap-4 relative z-30">
+          {/* Left: Duolingo Gamification Stats (Streak 🔥, Gems/Words 💎, XP ⚡) */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Streak Flame (#FF9600) */}
+            <div
+              data-testid="duo-stat-streak"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-2xl border-2 border-b-4 border-[#CC7800] bg-[#FF9600] text-white font-black text-xs"
+              title="روزهای متوالی تمرین (Streak)"
+            >
+              <span>🔥</span>
+              <span>{streakDays} روز</span>
+            </div>
+
+            {/* Saved Words / Gems (#1CB0F6) */}
+            <button
+              type="button"
+              data-testid="duo-stat-gems"
+              onClick={() => setActiveNav('saved')}
+              className="duo-btn duo-btn-blue px-3.5 py-1.5 text-xs"
+              title="تعداد لغات و اصطلاحات ذخیره‌شده"
+            >
+              <span>💎</span>
+              <span>{cards.length} لغت</span>
+            </button>
+
+            {/* XP Score (#FFC800) */}
+            <button
+              type="button"
+              data-testid="duo-stat-xp"
+              onClick={() => setActiveNav('duopractice')}
+              className="duo-btn duo-btn-yellow px-3.5 py-1.5 text-xs"
+              title="امتیاز تجربه (XP) — کلیک برای شروع تمرین دولینگویی"
+            >
+              <span>⚡</span>
+              <span>{userXp} XP</span>
+            </button>
           </div>
 
+          {/* Right: Quick Actions + Toolbar Popup + Cloud Account + Theme Switcher */}
           <div className="flex flex-wrap items-center gap-2.5 text-xs">
+            {/* Quick Start Duo Practice CTA */}
+            <button
+              type="button"
+              data-testid="header-start-duo-practice-btn"
+              onClick={() => setActiveNav('duopractice')}
+              className="duo-btn duo-btn-green px-3.5 py-1.5 text-xs"
+            >
+              <span>🎯</span>
+              <span>تمرین دولینگویی</span>
+            </button>
+
+            {/* Browser Toolbar Extension Popup Trigger (Compact Leitner Box in Corner) */}
+            <button
+              type="button"
+              data-testid="header-toolbar-popup-btn"
+              onClick={() => {
+                setToolbarPopupOpen((prev) => !prev);
+                setPopupFlipped(false);
+              }}
+              className="duo-btn duo-btn-purple px-3.5 py-1.5 text-xs"
+              title="مشاهده پاپ‌آپ جمع‌وجور جعبه لایتنر بالای مرورگر"
+            >
+              <span>📦</span>
+              <span>لایتنر تلبار ({ankiCounts.totalDueToday})</span>
+            </button>
+
+            {/* Cloud Account Button */}
             <button
               type="button"
               data-testid="header-cloud-account-btn"
               onClick={() => setCloudModalOpen(true)}
-              className={`px-3.5 py-1.5 rounded-xl font-extrabold transition-all flex items-center gap-2 shadow-md ${
-                authUser
-                  ? 'bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/45 text-emerald-200'
-                  : 'bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-400 hover:to-emerald-400 text-slate-950'
+              className={`duo-btn px-3.5 py-1.5 text-xs ${
+                authUser ? 'duo-btn-green' : 'duo-btn-blue'
               }`}
             >
               <span>☁</span>
               <span>
-                {authUser
-                  ? `اکانت ابری: ${authUser.email}`
-                  : 'ورود با جیمیل + لینک دامین عمومی (Cloud Sync)'}
+                {authUser ? authUser.email : 'ورود با جیمیل'}
               </span>
             </button>
 
-            <a
-              href="/cunt-academy-zen-firefox.xpi"
-              download="cunt-academy-zen-firefox.xpi"
-              className="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold transition-colors"
-            >
-              ⬇ دانلود Zen / Firefox (.xpi)
-            </a>
-            <a
-              href="/cunt-academy-chrome.zip"
-              download="cunt-academy-chrome.zip"
-              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-colors"
-            >
-              ⬇ دانلود Chrome (.zip)
-            </a>
+            {/* Duolingo Official Dual Theme Switcher (Snow Light / Dark Slate) */}
             <button
               type="button"
-              onClick={() => setActiveNav('extension')}
-              className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-violet-200 font-bold transition-colors"
+              data-testid="duo-theme-toggle-btn"
+              onClick={() => setDuoTheme((prev) => (prev === 'light' ? 'dark' : 'light'))}
+              className="duo-btn duo-btn-neutral px-3.5 py-1.5 text-xs"
+              title="تغییر تم دولینگو (روشن کلاسیک / تاریک سرمه‌ای)"
             >
-              🧩 راهنمای نصب و سینک
+              <span>{duoTheme === 'light' ? '🌙 تم تاریک' : '☀️ تم روشن'}</span>
             </button>
           </div>
+
+          {/* COMPACT BROWSER TOOLBAR LEITNER POPUP WIDGET IN TOP-RIGHT CORNER */}
+          {toolbarPopupOpen && (() => {
+            const activeDeck = cards.filter((c) => c.status !== 'ignored');
+            const filteredDeck =
+              popupBoxFilter === 0
+                ? activeDeck.filter((c) => c.box < 6)
+                : activeDeck.filter((c) => c.box === popupBoxFilter);
+            const dueDeck = filteredDeck.filter((c) => c.nextReviewAt <= Date.now() || c.box === 1);
+            const currentPopupCard = dueDeck[0] || filteredDeck[0] || null;
+
+            return (
+              <div
+                data-testid="toolbar-leitner-popup-drawer"
+                dir="rtl"
+                className="fixed top-16 right-6 z-50 w-[375px] duo-card overflow-hidden flex flex-col"
+              >
+                {/* Popup Header */}
+                <div className="px-4 py-3 duo-surface-secondary border-b-2 duo-border-color flex items-center justify-between">
+                  <div className="flex items-center gap-2" dir="ltr">
+                    <BrandLogo size={28} />
+                    <div>
+                      <div className="text-[10px] font-black tracking-widest text-[#1CB0F6]">
+                        CUNT ACADEMY
+                      </div>
+                      <div className="text-xs font-extrabold">Leitner &amp; Anki Popup</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-xl bg-[#58CC02] text-white text-[10px] font-black">
+                      {authUser ? '☁ سینک فعال' : '☁ آماده سینک'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setToolbarPopupOpen(false)}
+                      className="duo-btn duo-btn-neutral w-7 h-7 text-xs font-black"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                {/* Anki Counters Strip */}
+                <div className="grid grid-cols-4 gap-2 p-3 duo-surface-secondary border-b-2 duo-border-color text-center">
+                  <div className="p-1.5 rounded-xl duo-surface-main border-2 duo-border-color">
+                    <div className="text-xs font-black font-mono text-[#1CB0F6]">{ankiCounts.newCount}</div>
+                    <div className="text-[9px] font-bold duo-text-muted">جدید (New)</div>
+                  </div>
+                  <div className="p-1.5 rounded-xl duo-surface-main border-2 duo-border-color">
+                    <div className="text-xs font-black font-mono text-[#FF9600]">{ankiCounts.learningCount}</div>
+                    <div className="text-[9px] font-bold duo-text-muted">در حال یادگیری</div>
+                  </div>
+                  <div className="p-1.5 rounded-xl duo-surface-main border-2 duo-border-color">
+                    <div className="text-xs font-black font-mono text-[#58CC02]">{ankiCounts.reviewDueCount}</div>
+                    <div className="text-[9px] font-bold duo-text-muted">مرور امروز</div>
+                  </div>
+                  <div className="p-1.5 rounded-xl duo-surface-main border-2 duo-border-color">
+                    <div className="text-xs font-black font-mono text-[#CE82FF]">{pipelineCounts.learnedCount}</div>
+                    <div className="text-[9px] font-bold duo-text-muted">تثبیت‌شده ★</div>
+                  </div>
+                </div>
+
+                {/* 5-Box Leitner Mini Filter Chips */}
+                <div className="px-3 py-2 duo-surface-main border-b-2 duo-border-color flex items-center gap-1.5 overflow-x-auto">
+                  {[
+                    { box: 0, label: `همه (${activeDeck.length})` },
+                    { box: 1, label: 'جعبه ۱' },
+                    { box: 2, label: 'جعبه ۲' },
+                    { box: 3, label: 'جعبه ۳' },
+                    { box: 4, label: 'جعبه ۴' },
+                    { box: 5, label: 'جعبه ۵' },
+                  ].map((item) => (
+                    <button
+                      key={item.box}
+                      type="button"
+                      onClick={() => {
+                        setPopupBoxFilter(item.box);
+                        setPopupFlipped(false);
+                      }}
+                      className={`px-2.5 py-1 rounded-xl text-[10px] font-black whitespace-nowrap border-2 transition-colors ${
+                        popupBoxFilter === item.box
+                          ? 'bg-[#1CB0F6] border-[#1899D6] text-white'
+                          : 'duo-surface-secondary duo-border-color'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Compact Flashcard Area */}
+                <div className="p-3.5 space-y-3 duo-surface-main">
+                  {currentPopupCard ? (
+                    <div className="p-4 rounded-2xl duo-surface-secondary border-2 border-b-4 duo-border-color space-y-3">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="px-2.5 py-0.5 rounded-lg bg-[#CE82FF] text-white font-black">
+                          جعبه {currentPopupCard.box} لایتنر
+                        </span>
+                        <span dir="ltr" className="font-mono font-bold duo-text-muted">
+                          {currentPopupCard.cefr} • {currentPopupCard.freqTag}
+                        </span>
+                      </div>
+
+                      <div className="text-center py-2" dir="ltr">
+                        <div className="text-xl font-black">{currentPopupCard.word}</div>
+                        <div className="text-xs font-mono duo-text-muted">{currentPopupCard.phonetic}</div>
+                      </div>
+
+                      {currentPopupCard.contextSentenceEn && (
+                        <div
+                          dir="ltr"
+                          className="p-2.5 rounded-xl duo-surface-main border-2 duo-border-color text-xs font-bold text-center"
+                        >
+                          {currentPopupCard.contextSentenceEn}
+                        </div>
+                      )}
+
+                      {!popupFlipped ? (
+                        <button
+                          type="button"
+                          data-testid="popup-show-answer-btn"
+                          onClick={() => setPopupFlipped(true)}
+                          className="duo-btn duo-btn-blue w-full py-2.5 text-xs"
+                        >
+                          👁 نمایش پاسخ و زمان‌بندی AnkiDroid
+                        </button>
+                      ) : (
+                        <div className="space-y-3 pt-2 border-t-2 duo-border-color">
+                          <div className="text-center text-base font-black text-[#58CC02]">
+                            {currentPopupCard.translationFa}
+                          </div>
+                          {currentPopupCard.aiExplanationFa && (
+                            <div className="p-2.5 rounded-xl duo-surface-main border-2 duo-border-color text-[11px] font-bold leading-relaxed">
+                              ✨ {currentPopupCard.aiExplanationFa}
+                            </div>
+                          )}
+                          <div className="grid grid-cols-4 gap-1.5" dir="ltr">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleGradeCard(currentPopupCard.id, 'again');
+                                setPopupFlipped(false);
+                              }}
+                              className="duo-btn duo-btn-red py-1.5 text-[10px]"
+                            >
+                              Again &lt;10m
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleGradeCard(currentPopupCard.id, 'hard');
+                                setPopupFlipped(false);
+                              }}
+                              className="duo-btn duo-btn-orange py-1.5 text-[10px]"
+                            >
+                              Hard 1d
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleGradeCard(currentPopupCard.id, 'good');
+                                setPopupFlipped(false);
+                              }}
+                              className="duo-btn duo-btn-green py-1.5 text-[10px]"
+                            >
+                              Good 4d
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleGradeCard(currentPopupCard.id, 'easy');
+                                setPopupFlipped(false);
+                              }}
+                              className="duo-btn duo-btn-blue py-1.5 text-[10px]"
+                            >
+                              Easy 7d
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-xs font-bold duo-text-muted">
+                      تمام کارت‌های این جعبه مرور شده‌اند!
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom Direct Website Link & Full Portal Footer */}
+                <div className="p-3 duo-surface-secondary border-t-2 duo-border-color flex items-center gap-2">
+                  <a
+                    href="https://ais-pre-kpvvaywqip7q5ueoy2ov3t-258196294078.us-east1.run.app"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-testid="popup-direct-website-link"
+                    className="duo-btn duo-btn-green flex-1 py-2 px-3 text-[11px] text-center"
+                  >
+                    🌐 ورود مستقیم به سایت اصلی Cunt Academy ↗
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setToolbarPopupOpen(false);
+                      setActiveNav('phrasepump');
+                    }}
+                    className="duo-btn duo-btn-neutral py-2 px-3 text-[11px]"
+                  >
+                    🪭 پنل کامل
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </header>
 
-        {/* Active View Content */}
-        <main className="flex-1 p-5 max-w-[1440px] w-full mx-auto">
+        {/* Active View Content (Spacious Duolingo p-6 & gap-6 Layout) */}
+        <main className="flex-1 p-6 max-w-[1440px] w-full mx-auto">
           {activeNav === 'media' && (
             <PlayerSimulatorView
               cards={cards}
@@ -817,6 +1109,15 @@ export default function App() {
               onSaveSentence={handleSaveSentence}
               onOpenPhrasePump={() => setActiveNav('phrasepump')}
               onOpenSettingsPage={() => setActiveNav('settings')}
+            />
+          )}
+
+          {activeNav === 'duopractice' && (
+            <DuoPracticeView
+              cards={cards}
+              onGradeCard={handleGradeCard}
+              onEarnXp={handleEarnXp}
+              onExit={() => setActiveNav('media')}
             />
           )}
 

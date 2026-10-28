@@ -88,6 +88,9 @@
     activeTab: 'subtitles',
     wordFilterCat: 'all',
     selectedWordInfo: null,
+    dictEditBackOpen: false,
+    dictAiResult: null,
+    dictAiLoading: false,
     selectedRangeStartIdx: -1,
     selectedRangeEndIdx: -1,
     isSelectingWordsDrag: false,
@@ -255,7 +258,16 @@
 
     ytpLrWidgetEl.innerHTML = `
       <button type="button" class="lt-ytp-lr-badge" data-lt-action="toggle-enabled" title="Cunt Academy Subtitles (ON/OFF)">
-        <span class="lt-ytp-lr-circle">CA</span>
+        <span class="lt-ytp-lr-circle" style="background:transparent;padding:0;overflow:hidden;">
+          <svg width="20" height="20" viewBox="0 0 64 64" fill="none">
+            <rect x="3" y="3" width="58" height="58" rx="16" fill="#0B0F1B" stroke="#7C5CFC" stroke-width="4" />
+            <rect x="11" y="13" width="38" height="28" rx="6" transform="rotate(-6 11 13)" fill="#1E1B4B" stroke="#8B5CF6" stroke-width="2" />
+            <rect x="14" y="15" width="38" height="28" rx="6" fill="#13182B" stroke="#38BDF8" stroke-width="2" />
+            <path d="M27 21.5L40.5 29L27 36.5V21.5Z" fill="#10B981" />
+            <rect x="15" y="46.5" width="34" height="3.5" rx="1.75" fill="#F8FAFC" />
+            <rect x="20" y="52" width="24" height="3.5" rx="1.75" fill="#FDE047" />
+          </svg>
+        </span>
         <span class="lt-ytp-switch ${isOn ? 'is-on' : 'is-off'}">
           <span class="lt-ytp-switch-knob"></span>
         </span>
@@ -1102,6 +1114,9 @@
     state.selectedRangeEndIdx = endIdx;
     state.pausedByHoverAtCueEnd = false;
     state.hoverLockedCueIndex = -1;
+    state.dictEditBackOpen = false;
+    state.dictAiResult = null;
+    state.dictAiLoading = false;
     if (hoverTooltipEl) hoverTooltipEl.classList.add('lt-hidden');
 
     if (videoEl && !videoEl.paused) videoEl.pause();
@@ -1116,42 +1131,30 @@
     const diffMeta = Constants ? Constants.getWordDifficultyMeta(clean) : { cefr: 'B1', freqTag: 'tag 2k', rank: 1800 };
     const savedExisting = state.savedCardsMap.get(clean);
 
-    if (instantLocal || savedExisting) {
-      const initialData = {
-        word: clean,
-        lemma: (instantLocal && instantLocal.lemma) || clean,
-        translation: (savedExisting && savedExisting.translation) || (instantLocal && instantLocal.translation) || clean,
-        pos: (instantLocal && instantLocal.pos) || 'word',
-        posGroups: (instantLocal && instantLocal.posGroups) || [],
-        phonetic: (savedExisting && savedExisting.phonetic) || `/${clean}/`,
-        contextSentence: contextSentence || '',
-        contextTranslation: '',
-        cefr: diffMeta.cefr,
-        freqTag: diffMeta.freqTag,
-        rank: diffMeta.rank,
-        aiExplanation: savedExisting ? savedExisting.aiExplanation : '',
-        externalDictionaries: []
-      };
-      state.selectedWordInfo = initialData;
-      renderFloatingDictionaryContent(initialData);
-    } else {
-      floatingDictEl.innerHTML = `
-        <div class="lt-dict-card">
-          <div class="lt-dict-top-tabs">
-            <span class="lt-dict-tab-title">Dictionary</span>
-            <button type="button" class="lt-dict-close" id="lt-dict-close-btn">✕</button>
-          </div>
-          <div class="lt-dict-header">
-            <div class="lt-dict-word-main">
-              <strong class="lt-dict-word">${escapeHtml(clean)}</strong>
-            </div>
-            <div class="lt-dict-primary-fa" dir="rtl">در حال بارگذاری معانی چندگانه...</div>
-          </div>
-        </div>
-      `;
-      const closeBtn = floatingDictEl.querySelector('#lt-dict-close-btn');
-      if (closeBtn) closeBtn.onclick = () => floatingDictEl.classList.add('lt-hidden');
-    }
+    const initialData = {
+      word: clean,
+      lemma: (instantLocal && instantLocal.lemma) || clean,
+      translation: (savedExisting && savedExisting.translation) || (instantLocal && instantLocal.translation) || clean,
+      pos: (instantLocal && instantLocal.pos) || 'word',
+      posGroups: (instantLocal && instantLocal.posGroups) || [],
+      phonetic: (savedExisting && savedExisting.phonetic) || `/${clean}/`,
+      contextSentence: contextSentence || '',
+      contextTranslation: '',
+      cefr: diffMeta.cefr,
+      freqTag: diffMeta.freqTag,
+      rank: diffMeta.rank,
+      aiExplanation: savedExisting ? savedExisting.aiExplanation : '',
+      externalDictionaries: [
+        { code: 'AB', name: 'Abadis (آبادیس)', url: `https://abadis.ir/entofa/${encodeURIComponent(clean)}/` },
+        { code: 'FA', name: 'FastDic (فست‌دیک)', url: `https://fastdic.com/word/${encodeURIComponent(clean)}` },
+        { code: 'Re', name: 'Reverso Context', url: `https://context.reverso.net/translation/english-persian/${encodeURIComponent(clean)}` },
+        { code: 'Ca', name: 'Cambridge Dictionary', url: `https://dictionary.cambridge.org/dictionary/english/${encodeURIComponent(clean)}` },
+        { code: 'Wr', name: 'WordReference', url: `https://www.wordreference.com/enfa/${encodeURIComponent(clean)}` },
+        { code: 'Gl', name: 'Glosbe EN-FA', url: `https://glosbe.com/en/fa/${encodeURIComponent(clean)}` }
+      ]
+    };
+    state.selectedWordInfo = initialData;
+    renderFloatingDictionaryContent(initialData);
 
     const res = await sendExtMessage({
       type: 'LT_LOOKUP_WORD',
@@ -1162,8 +1165,10 @@
     });
 
     if (!res || !res.ok || !res.data) return;
-    state.selectedWordInfo = res.data;
-    renderFloatingDictionaryContent(res.data);
+    if (state.selectedWordInfo && state.selectedWordInfo.word === clean) {
+      state.selectedWordInfo = res.data;
+      renderFloatingDictionaryContent(res.data);
+    }
   }
 
   function findCurrentVideoExamples(targetWordOrPhrase) {
@@ -1210,7 +1215,7 @@
           .map(
             (ex) => `
           <div class="lt-dict-example-item" data-lt-seek-ex="${ex.index}" style="cursor:pointer;">
-            <div class="lt-dict-ex-en">▶ ${escapeHtml(ex.text)}</div>
+            <div class="lt-dict-ex-en"><span style="color:#6ee7b7;font-size:10px;margin-right:4px;">▶</span>${escapeHtml(ex.text)}</div>
             ${ex.translation ? `<div class="lt-dict-ex-fa" dir="rtl">${escapeHtml(ex.translation)}</div>` : ''}
           </div>`
           )
@@ -1245,36 +1250,26 @@
     const activeCue = state.cues[state.activeCueIndex];
     const totalWordsInCue = activeCue ? activeCue.text.split(/\s+/).filter(Boolean).length : 0;
     const canExpandRange = state.selectedRangeStartIdx !== -1 && totalWordsInCue > 1;
+    const aiRes = state.dictAiResult;
 
     floatingDictEl.innerHTML = `
       <div class="lt-dict-card">
-        <div class="lt-dict-top-tabs">
-          <span class="lt-dict-tab-title">Dictionary ${isMultiWord ? '• Phrase Mode' : ''}</span>
-          <button type="button" class="lt-dict-close" id="lt-dict-close-btn">✕</button>
-        </div>
-
-        <div class="lt-dict-header">
-          <div class="lt-dict-word-main">
-            <strong class="lt-dict-word">${escapeHtml(info.word)}</strong>
-            <button type="button" class="lt-dict-audio-btn" id="lt-dict-speak-btn" title="Listen Pronunciation">🔊</button>
-          </div>
-          <div class="lt-dict-primary-fa" dir="rtl">${escapeHtml(displayTranslation)}</div>
-          ${displayCustomNotes ? `<div dir="rtl" style="font-size:12px;color:#86efac;margin-top:4px;">📝 ${escapeHtml(displayCustomNotes)}</div>` : ''}
-        </div>
-
+        <!-- 1. Top Status Bar (1:1 Website Parity) -->
         <div class="lt-dict-status-strip">
           <button type="button" class="lt-status-btn is-known ${currentStatus === 'known' ? 'active' : ''}" data-lt-set-status="known" title="Mark as Known (Green)">✓ Known</button>
-          <button type="button" class="lt-status-btn is-learning ${currentStatus === 'learning' ? 'active' : ''}" data-lt-set-status="learning" title="Save to Anki Flashcards (Orange)">📖 Learn</button>
-          <button type="button" class="lt-status-btn is-ignored ${currentStatus === 'ignored' ? 'active' : ''}" data-lt-set-status="ignored" title="Ignore">⊘</button>
-          <span class="lt-dict-cefr-badge">${escapeHtml(info.freqTag || 'tag 2k')}</span>
+          <button type="button" class="lt-status-btn is-learning ${currentStatus === 'learning' ? 'active' : ''}" data-lt-set-status="learning" title="Save to Anki Flashcards (Orange)">📖 Add to Anki</button>
+          <button type="button" class="lt-status-btn ${state.dictEditBackOpen ? 'is-edit-open' : ''}" id="lt-toggle-edit-back-btn" title="ویرایش معنی و پشت فلش‌کارت Anki">✏️ ویرایش پشت کارت</button>
+          <span class="lt-dict-cefr-badge">${escapeHtml(info.cefr || 'B1')} • ${escapeHtml(info.freqTag || 'tag 2k')}</span>
+          <button type="button" class="lt-dict-close" id="lt-dict-close-btn" title="Close Dictionary">✕</button>
         </div>
 
+        <!-- 2. Multi-Word Range Expander Bar -->
         ${
           canExpandRange
             ? `
           <div class="lt-phrase-expander-bar">
-            <span>Select Phrasal Verb / Idiom:</span>
-            <div>
+            <span dir="rtl" style="color:#c4b5fd;font-weight:700;">انتخاب چندکلمه‌ای (Phrasal Verb / Idiom):</span>
+            <div style="display:flex;gap:5px;">
               <button type="button" class="lt-phrase-exp-btn" id="lt-exp-left" title="Include previous word in phrase">◀ +Word</button>
               <button type="button" class="lt-phrase-exp-btn" id="lt-exp-right" title="Include next word in phrase">+Word ▶</button>
             </div>
@@ -1282,39 +1277,118 @@
             : ''
         }
 
-        <div class="lt-dict-body">
-          <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px;margin-bottom:8px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span style="font-size:11px;color:#a5b4fc;font-weight:700;">✏️ ویرایش ترجمه / یادداشت پشت فلش‌کارت</span>
-              <button type="button" class="lt-phrase-exp-btn" id="lt-save-custom-back-btn" style="background:#10b981;color:#052e16;font-weight:700;">ذخیره در کارت</button>
+        <!-- 3. Teal Word + Pronunciation + Primary Persian Header (#0b5772) -->
+        <div class="lt-dict-teal-header">
+          <div class="lt-dict-teal-left">
+            <button type="button" class="lt-dict-audio-btn" id="lt-dict-speak-btn" title="Listen Pronunciation">🔊</button>
+            <div>
+              <div class="lt-dict-word">${escapeHtml(info.word)}</div>
+              <div class="lt-dict-phonetic">${escapeHtml(info.phonetic || `/${info.word}/`)}</div>
             </div>
-            <input type="text" id="lt-custom-fa-input" dir="rtl" value="${escapeHtml(displayTranslation)}" placeholder="معنی فارسی دلخواه..." style="width:100%;background:#090d16;color:#fde047;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:5px 8px;font-size:12px;margin-bottom:5px;" />
-            <input type="text" id="lt-custom-notes-input" dir="rtl" value="${escapeHtml(displayCustomNotes)}" placeholder="یادداشت شخصی یا معنی اضافه..." style="width:100%;background:#090d16;color:#e4e4e7;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:5px 8px;font-size:11px;" />
           </div>
+          <div class="lt-dict-teal-right" dir="rtl">
+            <div class="lt-dict-primary-fa">${escapeHtml(displayTranslation)}</div>
+            ${displayCustomNotes ? `<div class="lt-dict-custom-note-pill">📝 ${escapeHtml(displayCustomNotes)}</div>` : ''}
+          </div>
+        </div>
 
+        <div class="lt-dict-body">
+          <!-- 4. Collapsible Back-of-Card Customizer -->
           ${
-            info.aiExplanation
-              ? `<div class="lt-dict-grammar-box" dir="rtl">${escapeHtml(info.aiExplanation)}</div>`
+            state.dictEditBackOpen
+              ? `
+            <div class="lt-dict-edit-back-box" dir="rtl">
+              <div class="lt-dict-edit-back-title">✏️ شخصی‌سازی معنی و یادداشت پشت کارت Anki</div>
+              <div style="margin-bottom:6px;">
+                <label class="lt-dict-edit-label">معنی اصلی پشت کارت (فارسی):</label>
+                <input type="text" id="lt-custom-fa-input" dir="rtl" value="${escapeHtml(displayTranslation)}" placeholder="معنی فارسی دلخواه..." class="lt-dict-edit-input" />
+              </div>
+              <div style="margin-bottom:8px;">
+                <label class="lt-dict-edit-label">یادداشت شخصی / نکته دستوری پشت کارت:</label>
+                <textarea id="lt-custom-notes-input" dir="rtl" rows="2" placeholder="هر توضیح، مترادف یا نکته‌ای که می‌خواهید پشت کارت ببینید..." class="lt-dict-edit-textarea">${escapeHtml(displayCustomNotes)}</textarea>
+              </div>
+              <button type="button" id="lt-save-custom-back-btn" class="lt-dict-save-back-btn">💾 ذخیره در پشت کارت Anki</button>
+            </div>`
               : ''
           }
 
-          ${posGroupsHtml}
+          <!-- 5. ALL MEANINGS BY PART OF SPEECH (معانی کامل) -->
+          <div class="lt-dict-pos-card">
+            <div class="lt-dict-pos-card-header">ALL MEANINGS BY PART OF SPEECH (معانی کامل):</div>
+            ${posGroupsHtml}
+          </div>
 
-          <div class="lt-ext-dict-list">${extLinksHtml}</div>
+          <!-- 6. Lexa AI (Gemini) — معنی دقیق در این جمله -->
+          <div class="lt-dict-ai-card">
+            <div class="lt-dict-ai-header">
+              <span class="lt-dict-ai-title">✨ Lexa AI (Gemini) — معنی دقیق در این جمله</span>
+              <button type="button" class="lt-dict-ai-trigger-btn" id="lt-ask-ai-btn" ${state.dictAiLoading ? 'disabled' : ''}>
+                ${state.dictAiLoading ? 'در حال تحلیل...' : '✨ تحلیل هوشمند در این جمله'}
+              </button>
+            </div>
 
+            ${
+              aiRes
+                ? `
+              <div class="lt-dict-ai-result" dir="rtl">
+                <div class="lt-dict-ai-highlight-box">
+                  <div class="lt-dict-ai-hl-label">🎯 معنی دقیق در این دیالوگ (${escapeHtml(aiRes.contextualPos || info.pos || 'در بافت جمله')}):</div>
+                  <div class="lt-dict-ai-hl-value">${escapeHtml(aiRes.contextualMeaningFa || displayTranslation)}</div>
+                </div>
+                ${
+                  aiRes.sentenceTranslationFa
+                    ? `<div class="lt-dict-ai-sentence-fa">📝 ترجمه روان کل دیالوگ: «${escapeHtml(aiRes.sentenceTranslationFa)}»</div>`
+                    : ''
+                }
+                <div class="lt-dict-ai-nuance">${escapeHtml(aiRes.explanationFa || info.aiExplanation || '')}</div>
+                ${
+                  Array.isArray(aiRes.allMeaningsFa) && aiRes.allMeaningsFa.length
+                    ? `<div class="lt-dict-ai-all-pos">
+                        <div style="font-size:10px;color:#cbd5e1;font-weight:700;margin-bottom:3px;">سایر معانی پرکاربرد:</div>
+                        ${aiRes.allMeaningsFa
+                          .slice(0, 4)
+                          .map(
+                            (m) => `
+                          <div style="font-size:11px;line-height:1.45;">
+                            <span style="color:#6ee7b7;font-family:monospace;margin-left:4px;">[${escapeHtml(m.pos)}]</span>
+                            <span style="color:#f4f4f5;">${escapeHtml((m.meaningsFa || []).join('، '))}</span>
+                          </div>`
+                          )
+                          .join('')}
+                      </div>`
+                    : ''
+                }
+                <button type="button" class="lt-dict-ai-save-anki-btn" id="lt-save-ai-anki-btn">
+                  💾 افزودن معنی هوشمند Gemini به پشت فلش‌کارت Anki
+                </button>
+              </div>`
+                : info.aiExplanation
+                  ? `<div class="lt-dict-ai-Subtle" dir="rtl">${escapeHtml(info.aiExplanation)}</div>`
+                  : `<div class="lt-dict-ai-placeholder" dir="rtl">برای دریافت معنی دقیق این کلمه یا اصطلاح در بافت همین دیالوگ ویدیو، روی دکمه بالا کلیک کنید.</div>`
+            }
+          </div>
+
+          <!-- 7. Examples: Current text -->
           ${
             currentTextHtml
-              ? `<div class="lt-dict-section-title">Examples: Current text</div>
+              ? `<div class="lt-dict-section-title">EXAMPLES: CURRENT TEXT</div>
                  ${currentTextHtml}`
               : ''
           }
 
+          <!-- 8. Examples: Tatoeba -->
           ${
             tatoebaHtml
-              ? `<div class="lt-dict-section-title">Examples: Context & Dictionary</div>
+              ? `<div class="lt-dict-section-title">EXAMPLES: TATOEBA</div>
                  ${tatoebaHtml}`
               : ''
           }
+
+          <!-- 9. External Dictionaries -->
+          <div class="lt-dict-ext-footer">
+            <span class="lt-dict-ext-label">External Dictionaries:</span>
+            <div class="lt-ext-dict-list">${extLinksHtml}</div>
+          </div>
         </div>
       </div>
     `;
@@ -1327,6 +1401,11 @@
       speakText(info.word, 'en-US');
     });
 
+    floatingDictEl.querySelector('#lt-toggle-edit-back-btn')?.addEventListener('click', () => {
+      state.dictEditBackOpen = !state.dictEditBackOpen;
+      renderFloatingDictionaryContent(info);
+    });
+
     floatingDictEl.querySelector('#lt-save-custom-back-btn')?.addEventListener('click', async () => {
       const customFa = floatingDictEl.querySelector('#lt-custom-fa-input')?.value?.trim() || displayTranslation;
       const customNotes = floatingDictEl.querySelector('#lt-custom-notes-input')?.value?.trim() || '';
@@ -1336,6 +1415,51 @@
         type: 'LT_UPDATE_CARD_BACK',
         id: info.word,
         patch: { translation: customFa, customNotes }
+      });
+      state.dictEditBackOpen = false;
+      renderFloatingDictionaryContent(info);
+    });
+
+    floatingDictEl.querySelector('#lt-ask-ai-btn')?.addEventListener('click', async () => {
+      if (state.dictAiLoading) return;
+      state.dictAiLoading = true;
+      renderFloatingDictionaryContent(info);
+      const activeSentence = info.contextSentence || (state.cues[state.activeCueIndex] ? state.cues[state.activeCueIndex].text : '');
+      const aiResp = await sendExtMessage({
+        type: 'LT_AI_CONTEXTUAL_EXPLAIN',
+        word: info.word,
+        contextSentence: activeSentence
+      });
+      state.dictAiLoading = false;
+      if (aiResp && aiResp.ok && aiResp.data) {
+        state.dictAiResult = aiResp.data;
+        info.aiExplanation = aiResp.data.explanationFa || info.aiExplanation;
+      }
+      renderFloatingDictionaryContent(info);
+    });
+
+    floatingDictEl.querySelector('#lt-save-ai-anki-btn')?.addEventListener('click', async () => {
+      if (!state.dictAiResult) return;
+      const aiMeaning = state.dictAiResult.contextualMeaningFa || displayTranslation;
+      const aiNote = state.dictAiResult.explanationFa || '';
+      info.translation = aiMeaning;
+      info.aiExplanation = aiNote;
+      await saveWordWithStatus(
+        Object.assign({}, info, {
+          translation: aiMeaning,
+          customNotes: aiNote,
+          aiExplanation: aiNote
+        }),
+        'learning'
+      );
+      await sendExtMessage({
+        type: 'LT_UPDATE_CARD_BACK',
+        id: info.word,
+        patch: {
+          translation: aiMeaning,
+          customNotes: aiNote,
+          aiExplanation: aiNote
+        }
       });
       renderFloatingDictionaryContent(info);
     });
@@ -1371,7 +1495,7 @@
       btn.addEventListener('click', async () => {
         const nextStatus = btn.getAttribute('data-lt-set-status');
         const customFa = floatingDictEl.querySelector('#lt-custom-fa-input')?.value?.trim() || info.translation;
-        const customNotes = floatingDictEl.querySelector('#lt-custom-notes-input')?.value?.trim() || '';
+        const customNotes = floatingDictEl.querySelector('#lt-custom-notes-input')?.value?.trim() || displayCustomNotes;
         await saveWordWithStatus(Object.assign({}, info, { translation: customFa, customNotes }), nextStatus);
         renderFloatingDictionaryContent(info);
       });

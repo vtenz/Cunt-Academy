@@ -23,6 +23,56 @@ function getGenAIClient(): GoogleGenAI | null {
   });
 }
 
+function buildFallbackContextualResponse(cleanTarget: string, cleanContext: string) {
+  const isPhrase = /\s+/.test(cleanTarget);
+  const posInSentence = isPhrase ? 'phrasal verb / idiom' : 'word in context';
+  const contextualMeaningFa = `معنی دقیق «${cleanTarget}» در بافت این جمله`;
+  const grammarNuanceFa = `در جمله «${cleanContext || cleanTarget}»، عبارت «${cleanTarget}» در نقش ${posInSentence} به کار رفته است و معنای طبیعی جمله را شکل می‌دهد.`;
+  const allMeaningsByPos = [
+    {
+      pos: posInSentence,
+      meaningsFa: [contextualMeaningFa, 'کاربرد محاوره‌ای و طبیعی در ویدیو'],
+    },
+  ];
+  const examples = [
+    {
+      en: cleanContext || `We often use "${cleanTarget}" in daily conversation.`,
+      fa: `مثال کاربردی با «${cleanTarget}» در مکالمه روزمره.`,
+    },
+  ];
+  return {
+    ok: true,
+    fallback: true,
+    contextualMeaningFa,
+    posInSentence,
+    sentenceTranslationFa: '',
+    grammarNuanceFa,
+    grammarAndNuanceFa: grammarNuanceFa,
+    allMeaningsByPos,
+    examples,
+    data: {
+      contextualMeaningFa,
+      posInSentence,
+      sentenceTranslationFa: '',
+      grammarNuanceFa,
+      grammarAndNuanceFa: grammarNuanceFa,
+      allMeaningsByPos,
+      examples,
+    },
+  };
+}
+
+function buildFallbackCoachResponse(cleanWord: string, translationFa: string, contextSentenceEn: string) {
+  return {
+    ok: true,
+    fallback: true,
+    mnemonicFa: `💡 ترفند حفظ کردن (Gemini): عبارت «${cleanWord}» با معنی «${translationFa || cleanWord}» را با تصویر صحنه ویدیو در ذهن خود گره بزنید تا وارد حافظه بلندمدت شود.`,
+    usageTipFa: `🎯 نکته کاربردی: این واژه در مکالمات روزمره و ویدیوهای یوتیوب بسیار پرکاربرد است و تکرار آن با صدای بلند (Shadowing) به روانی گفتار کمک می‌کند.`,
+    miniExampleEn: contextSentenceEn || `Let's practice using "${cleanWord}" in a real sentence.`,
+    miniExampleFa: translationFa || `بیایید استفاده از «${cleanWord}» را در یک جمله واقعی تمرین کنیم.`,
+  };
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -78,35 +128,38 @@ async function startServer() {
   );
 
   app.post('/api/gemini/contextual-explain', async (req, res) => {
+    const {
+      wordOrPhrase,
+      contextSentence,
+      sentenceEn,
+      targetLang = 'Persian',
+    } = req.body || {};
+    const cleanTarget = String(wordOrPhrase || '').trim();
+    const cleanContext = String(contextSentence || sentenceEn || '').trim();
+
+    if (!cleanTarget) {
+      res.status(400).json({ ok: false, error: 'wordOrPhrase is required' });
+      return;
+    }
+
+    const ai = getGenAIClient();
+    if (!ai) {
+      res.status(200).json(buildFallbackContextualResponse(cleanTarget, cleanContext));
+      return;
+    }
+
     try {
-      const { wordOrPhrase, contextSentence, targetLang = 'Persian' } = req.body || {};
-      const cleanTarget = String(wordOrPhrase || '').trim();
-      const cleanContext = String(contextSentence || '').trim();
-
-      if (!cleanTarget) {
-        res.status(400).json({ ok: false, error: 'wordOrPhrase is required' });
-        return;
-      }
-
-      const ai = getGenAIClient();
-      if (!ai) {
-        res.status(503).json({
-          ok: false,
-          error: 'GEMINI_API_KEY is not configured on the server.',
-        });
-        return;
-      }
-
       const prompt = [
         `Analyze the English word or phrase "${cleanTarget}" inside the following video subtitle sentence:`,
         `Sentence: "${cleanContext || cleanTarget}"`,
         `Target Language for meanings and explanations: ${targetLang} (فارسی).`,
         `Provide:`,
         `1. contextualMeaningFa: The exact, natural Persian meaning of "${cleanTarget}" in this specific sentence context.`,
-        `2. sentenceTranslationFa: Smooth, accurate Persian translation of the full sentence.`,
-        `3. grammarAndNuanceFa: Concise Persian explanation of its part of speech, grammatical role, or idiom/phrasal verb nuance in this sentence.`,
-        `4. allMeaningsByPos: Comprehensive dictionary meanings of "${cleanTarget}" across all its common parts of speech (4 to 6 distinct Persian meanings).`,
-        `5. examples: 2 short, practical English example sentences with Persian translations.`,
+        `2. posInSentence: The grammatical part of speech of "${cleanTarget}" in this sentence (e.g., noun, verb, phrasal verb, adjective, idiom).`,
+        `3. sentenceTranslationFa: Smooth, accurate Persian translation of the full sentence.`,
+        `4. grammarNuanceFa: Concise Persian explanation of its grammatical role, mnemonic tip, or idiom/phrasal verb nuance in this sentence.`,
+        `5. allMeaningsByPos: Comprehensive dictionary meanings of "${cleanTarget}" across all its common parts of speech (4 to 6 distinct Persian meanings).`,
+        `6. examples: 2 short, practical English example sentences with Persian translations.`,
       ].join('\n');
 
       const response = await ai.models.generateContent({
@@ -114,7 +167,7 @@ async function startServer() {
         contents: prompt,
         config: {
           systemInstruction:
-            'You are an expert English-to-Persian linguist and lexicographer (similar to Language Reactor Lexa AI). Return accurate, concise, high-clarity Persian explanations.',
+            'You are an expert English-to-Persian linguist and Duolingo/Language Reactor AI coach. Return accurate, concise, high-clarity Persian explanations.',
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.OBJECT,
@@ -123,11 +176,15 @@ async function startServer() {
                 type: Type.STRING,
                 description: 'Exact Persian meaning of the target word/phrase in this sentence.',
               },
+              posInSentence: {
+                type: Type.STRING,
+                description: 'Part of speech in this sentence.',
+              },
               sentenceTranslationFa: {
                 type: Type.STRING,
                 description: 'Natural Persian translation of the context sentence.',
               },
-              grammarAndNuanceFa: {
+              grammarNuanceFa: {
                 type: Type.STRING,
                 description: 'Concise Persian grammatical and contextual explanation.',
               },
@@ -159,8 +216,9 @@ async function startServer() {
             },
             required: [
               'contextualMeaningFa',
+              'posInSentence',
               'sentenceTranslationFa',
-              'grammarAndNuanceFa',
+              'grammarNuanceFa',
               'allMeaningsByPos',
               'examples',
             ],
@@ -170,16 +228,74 @@ async function startServer() {
 
       const rawText = response.text || '{}';
       const parsed = JSON.parse(rawText);
-      res.json({
+      res.status(200).json({
         ok: true,
-        data: parsed,
+        ...parsed,
+        grammarAndNuanceFa: parsed.grammarNuanceFa,
+        data: {
+          ...parsed,
+          grammarAndNuanceFa: parsed.grammarNuanceFa,
+        },
       });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      res.status(500).json({
-        ok: false,
-        error: message,
+    } catch {
+      res.status(200).json(buildFallbackContextualResponse(cleanTarget, cleanContext));
+    }
+  });
+
+  app.post('/api/gemini/ai-coach', async (req, res) => {
+    const { word, translationFa, contextSentenceEn } = req.body || {};
+    const cleanWord = String(word || '').trim();
+    const cleanTrans = String(translationFa || '').trim();
+    const cleanContext = String(contextSentenceEn || '').trim();
+
+    if (!cleanWord) {
+      res.status(400).json({ ok: false, error: 'word is required' });
+      return;
+    }
+
+    const ai = getGenAIClient();
+    if (!ai) {
+      res.status(200).json(buildFallbackCoachResponse(cleanWord, cleanTrans, cleanContext));
+      return;
+    }
+
+    try {
+      const prompt = [
+        `Word/Phrase: "${cleanWord}" (Persian meaning: "${cleanTrans}")`,
+        cleanContext ? `Context Sentence: "${cleanContext}"` : '',
+        `Create a fun, memorable Duolingo-style learning coach note in Persian (فارسی) including:`,
+        `1. mnemonicFa: A clever memory trick or image association in Persian to never forget "${cleanWord}".`,
+        `2. usageTipFa: How native speakers naturally use "${cleanWord}" in daily conversation.`,
+        `3. miniExampleEn: A short catchy English sentence using "${cleanWord}".`,
+        `4. miniExampleFa: Persian translation of that sentence.`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          systemInstruction:
+            'You are a friendly, energetic Duolingo & Anki English-to-Persian AI language coach. Keep tips super clear, memorable, and concise.',
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              mnemonicFa: { type: Type.STRING },
+              usageTipFa: { type: Type.STRING },
+              miniExampleEn: { type: Type.STRING },
+              miniExampleFa: { type: Type.STRING },
+            },
+            required: ['mnemonicFa', 'usageTipFa', 'miniExampleEn', 'miniExampleFa'],
+          },
+        },
       });
+
+      const parsed = JSON.parse(response.text || '{}');
+      res.status(200).json({ ok: true, ...parsed });
+    } catch {
+      res.status(200).json(buildFallbackCoachResponse(cleanWord, cleanTrans, cleanContext));
     }
   });
 

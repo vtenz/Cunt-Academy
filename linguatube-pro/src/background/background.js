@@ -323,6 +323,48 @@
     return result;
   }
 
+  /**
+   * Lexa AI (Gemini) Contextual Word/Phrase Analyzer for the YouTube Extension Dictionary Drawer.
+   * Queries complete multi-POS + contextual sentence translation + grammatical/collocation nuance.
+   */
+  const aiExplainCache = new Map();
+  async function analyzeContextualAi(wordOrPhrase, contextSentence = '', sourceLang = 'en', targetLang = 'fa') {
+    const clean = String(wordOrPhrase || '').trim().toLowerCase();
+    const cleanCtx = String(contextSentence || '').trim();
+    const cacheKey = `${clean}::${cleanCtx.slice(0, 64)}`;
+    if (aiExplainCache.has(cacheKey)) return aiExplainCache.get(cacheKey);
+
+    const dictData = await lookupWordComplete(clean, cleanCtx, sourceLang, targetLang);
+    const sentenceTranslationFa = dictData?.contextTranslation || (cleanCtx ? await translateSentence(cleanCtx, sourceLang, targetLang) : '');
+    const posInSentence = dictData?.pos || (clean.includes(' ') ? 'phrasal verb / idiom' : 'word');
+    const contextualMeaningFa = dictData?.translation || clean;
+
+    const allMeaningsByPos = Array.isArray(dictData?.posGroups) && dictData.posGroups.length > 0
+      ? dictData.posGroups.slice(0, 4).map((g) => ({
+          pos: g.pos || posInSentence,
+          meaningsFa: Array.isArray(g.terms) ? g.terms.slice(0, 6) : [contextualMeaningFa]
+        }))
+      : [{ pos: posInSentence, meaningsFa: [contextualMeaningFa] }];
+
+    const grammarMeta = globalThis.LTConstants
+      ? globalThis.LTConstants.buildContextualGrammarAnalysis(clean, cleanCtx, {
+          pos: posInSentence,
+          translation: contextualMeaningFa
+        })
+      : { summaryFa: `نقش دستوری: ${posInSentence} — معنی در این بافت: «${contextualMeaningFa}»` };
+
+    const aiPayload = {
+      contextualMeaningFa,
+      posInSentence,
+      sentenceTranslationFa,
+      grammarNuanceFa: grammarMeta.summaryFa,
+      allMeaningsByPos
+    };
+
+    aiExplainCache.set(cacheKey, aiPayload);
+    return aiPayload;
+  }
+
   const actionApi = ext && (ext.action || ext.browserAction);
   if (actionApi && actionApi.onClicked) {
     actionApi.onClicked.addListener(() => {
@@ -445,6 +487,17 @@
                 message.targetLang || 'fa'
               );
               sendResponse({ ok: true, data });
+              break;
+            }
+
+            case 'LT_AI_CONTEXTUAL_EXPLAIN': {
+              const aiData = await analyzeContextualAi(
+                message.word,
+                message.contextSentence || '',
+                message.sourceLang || 'en',
+                message.targetLang || 'fa'
+              );
+              sendResponse({ ok: true, data: aiData });
               break;
             }
 

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cunt Academy — جعبه لایتنر و فلش‌کارت AnkiDroid</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="ca-popup-shell">
+    <!-- 1. COMPACT HEADER WITH CUSTOM EMBLEM LOGO & CLOUD BADGE -->
+    <header class="ca-popup-header" dir="ltr">
+      <div class="ca-brand-row">
+        <div class="ca-emblem-wrap" title="Cunt Academy v4.7">
+          <svg viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" class="ca-emblem-svg">
+            <defs>
+              <linearGradient id="pBg" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#141829" />
+                <stop offset="50%" stop-color="#1e1b4b" />
+                <stop offset="100%" stop-color="#064e3b" />
+              </linearGradient>
+              <linearGradient id="pShield" x1="20" y1="16" x2="108" y2="112" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#8b5cf6" />
+                <stop offset="55%" stop-color="#6366f1" />
+                <stop offset="100%" stop-color="#10b981" />
+              </linearGradient>
+              <linearGradient id="pPlay" x1="46" y1="38" x2="88" y2="86" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#34d399" />
+                <stop offset="100%" stop-color="#0ea5e9" />
+              </linearGradient>
+              <linearGradient id="pGold" x1="56" y1="14" x2="72" y2="34" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#fde047" />
+                <stop offset="100%" stop-color="#f59e0b" />
+              </linearGradient>
+            </defs>
+            <rect width="128" height="128" rx="28" fill="url(#pBg)" />
+            <rect x="6" y="6" width="116" height="116" rx="23" stroke="url(#pShield)" stroke-width="3" stroke-opacity="0.7" />
+            <rect x="24" y="30" width="80" height="58" rx="12" transform="rotate(-7 64 59)" fill="#4c1d95" fill-opacity="0.55" stroke="#a78bfa" stroke-width="2" />
+            <rect x="24" y="30" width="80" height="58" rx="12" transform="rotate(7 64 59)" fill="#065f46" fill-opacity="0.55" stroke="#34d399" stroke-width="2" />
+            <rect x="22" y="28" width="84" height="62" rx="14" fill="#0f1322" stroke="url(#pShield)" stroke-width="4" />
+            <path d="M53 44.5C53 42.1 55.6 40.6 57.7 41.8L81.2 55.3C83.3 56.5 83.3 59.5 81.2 60.7L57.7 74.2C55.6 75.4 53 73.9 53 71.5V44.5Z" fill="url(#pPlay)" />
+            <rect x="28" y="98" width="72" height="6" rx="3" fill="#f8fafc" />
+            <rect x="38" y="109" width="52" height="5.5" rx="2.75" fill="url(#pGold)" />
+            <path d="M64 11L66.6 17.4L73 20L66.6 22.6L64 29L61.4 22.6L55 20L61.4 17.4L64 11Z" fill="url(#pGold)" />
+          </svg>
+        </div>
+        <div class="ca-brand-titles">
+          <div class="ca-brand-kicker">CUNT ACADEMY <span class="ca-ver">v4.7</span></div>
+          <div class="ca-brand-main">Leitner &amp; AnkiDroid</div>
+        </div>
+      </div>
+
+      <div class="ca-header-actions">
+        <button type="button" id="popup-cloud-btn" class="ca-cloud-pill" title="اتصال و همگام‌سازی ابری با جیمیل">
+          <span id="popup-cloud-label">☁ سینک ابری</span>
+        </button>
+        <button type="button" id="popup-add-word-toggle" class="ca-icon-btn" title="افزودن سریع کلمه جدید به لایتنر">+</button>
+      </div>
+    </header>
+
+    <!-- 2. COMPACT NAVIGATION TABS -->
+    <nav class="ca-popup-tabs">
+      <button type="button" class="ca-tab-btn active" data-tab="review">
+        <span>⚡ مرور لایتنر</span>
+        <span class="ca-tab-badge" id="tab-due-badge">0</span>
+      </button>
+      <button type="button" class="ca-tab-btn" data-tab="boxes">
+        <span>📦 ۵ جعبه لایتنر</span>
+      </button>
+      <button type="button" class="ca-tab-btn" data-tab="words">
+        <span>📚 لغات (<span id="tab-total-badge">0</span>)</span>
+      </button>
+    </nav>
+
+    <!-- QUICK ADD WORD DRAWER (COLLAPSIBLE) -->
+    <div id="popup-quick-add-box" class="ca-quick-add-box hidden">
+      <div class="ca-quick-add-title">➕ افزودن کلمه یا عبارت جدید به جعبه ۱ لایتنر</div>
+      <input type="text" id="qa-word-en" dir="ltr" placeholder="English word or phrasal verb (e.g. figure out)" />
+      <input type="text" id="qa-word-fa" dir="rtl" placeholder="معنی فارسی (مثلاً: سر درآوردن، فهمیدن)" />
+      <input type="text" id="qa-word-note" dir="rtl" placeholder="مثال یا یادداشت پشت کارت (اختیاری)" />
+      <div class="ca-quick-add-actions">
+        <button type="button" id="qa-cancel-btn" class="ca-btn-ghost">انصراف</button>
+        <button type="button" id="qa-save-btn" class="ca-btn-emerald">💾 افزودن به فلش‌کارت</button>
+      </div>
+    </div>
+
+    <!-- 3. MAIN SCROLLABLE STAGE -->
+    <main class="ca-popup-main">
+      <!-- TAB 1: ANKIDROID & LEITNER FLASHCARD REVIEW -->
+      <section id="popup-view-review" class="ca-popup-view active">
+        <!-- Anki Deck Counters Strip -->
+        <div class="ca-anki-counts-strip" dir="ltr">
+          <div class="ca-count-pill is-new">
+            <span class="lbl">New</span>
+            <strong id="count-new">0</strong>
+          </div>
+          <div class="ca-count-pill is-learning">
+            <span class="lbl">Learning</span>
+            <strong id="count-learning">0</strong>
+          </div>
+          <div class="ca-count-pill is-review">
+            <span class="lbl">To Review</span>
+            <strong id="count-review">0</strong>
+          </div>
+          <div class="ca-count-pill is-total">
+            <span class="lbl">Mastered</span>
+            <strong id="count-mastered">0</strong>
+          </div>
+        </div>
+
+        <!-- Mini 5-Box Leitner Filter Bar -->
+        <div class="ca-mini-boxes-bar" id="mini-leitner-filter-bar">
+          <!-- Populated by popup.js -->
+        </div>
+
+        <!-- Active Flashcard Container -->
+        <div id="popup-card-stage" class="ca-card-stage">
+          <!-- Populated dynamically by popup.js -->
+        </div>
+      </section>
+
+      <!-- TAB 2: 5-BOX LEITNER OVERVIEW & PIPELINE -->
+      <section id="popup-view-boxes" class="ca-popup-view">
+        <div id="popup-leitner-boxes-grid" class="ca-boxes-grid">
+          <!-- Populated by popup.js -->
+        </div>
+      </section>
+
+      <!-- TAB 3: SAVED WORDS LIST & CLOUD SYNC -->
+      <section id="popup-view-words" class="ca-popup-view">
+        <div class="ca-words-search-row">
+          <input type="search" id="popup-word-search" placeholder="جستجوی کلمه یا معنی فارسی..." />
+        </div>
+        <div id="popup-words-list" class="ca-words-list">
+          <!-- Populated by popup.js -->
+        </div>
+      </section>
+
+      <!-- CLOUD SYNC MODAL INSIDE POPUP -->
+      <section id="popup-view-cloud" class="ca-popup-view">
+        <div class="ca-cloud-box">
+          <div class="ca-cloud-title">☁ اتصال به اکانت جیمیل و همگام‌سازی ابری</div>
+          <p class="ca-cloud-desc">
+            کد اتصال اکستنشن (Sync Key) را از سایت Cunt Academy کپی کرده و در کادر زیر قرار دهید تا تمام فلش‌کارت‌های شما بین سایت و اکستنشن همگام شوند:
+          </p>
+          <div id="popup-cloud-status-box" class="ca-cloud-status"></div>
+          <input type="text" id="popup-sync-token-input" dir="ltr" placeholder="کد اتصال اکستنشن را اینجا Paste کنید..." />
+          <div class="ca-cloud-btn-row">
+            <button type="button" id="popup-connect-token-btn" class="ca-btn-emerald">اتصال و همگام‌سازی</button>
+            <button type="button" id="popup-sync-now-btn" class="ca-btn-purple">🔄 سینک فوری</button>
+          </div>
+          <hr class="ca-divider" />
+          <div class="ca-cloud-title">🌐 آدرس مستقیم سایت شما (Netlify / Public URL)</div>
+          <input type="url" id="popup-site-url-input" dir="ltr" placeholder="https://..." />
+          <button type="button" id="popup-save-site-url-btn" class="ca-btn-ghost full">ذخیره آدرس سایت</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- 4. STICKY BOTTOM FOOTER: DIRECT WEBSITE LINK + FULL EXTENSION PORTAL -->
+    <footer class="ca-popup-footer">
+      <a
+        href="https://ais-pre-kpvvaywqip7q5ueoy2ov3t-258196294078.us-east1.run.app"
+        target="_blank"
+        rel="noopener noreferrer"
+        id="popup-open-website-link"
+        class="ca-footer-website-btn"
+        title="باز کردن مستقیم سایت Cunt Academy در تب جدید"
+      >
+        <span>🌐 ورود به سایت اصلی Cunt Academy</span>
+        <span dir="ltr" class="ca-ext-arrow">↗</span>
+      </a>
+      <button
+        type="button"
+        id="popup-open-portal-btn"
+        class="ca-footer-portal-btn"
+        title="باز کردن داشبورد کامل اکستنشن در تب جدید"
+      >
+        🪭 پنل کامل
+      </button>
+    </footer>
+  </div>
+
+  <script src="../shared/constants.js"></script>
+  <script src="../shared/persian-utils.js"></script>
+  <script src="../shared/db.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

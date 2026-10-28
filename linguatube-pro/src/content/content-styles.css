@@ -559,11 +559,258 @@
   color: #b388ff;
 }
 
+.lt-status-btn.is-edit-open {
+  background: rgba(124, 92, 252, 0.28);
+  border-color: #8b5cf6;
+  color: #ddd6fe;
+}
+
 .lt-dict-cefr-badge {
   margin-left: auto;
   font-size: 11px;
   color: #9ca3af;
   font-family: monospace;
+}
+
+/* Teal Word + Pronunciation + Primary Persian Header (#0b5772) */
+.lt-dict-teal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #0b5772;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.lt-dict-teal-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lt-dict-phonetic {
+  font-size: 11px;
+  color: #bae6fd;
+  font-family: monospace;
+}
+
+.lt-dict-teal-right {
+  text-align: right;
+}
+
+.lt-dict-custom-note-pill {
+  font-size: 11px;
+  color: #86efac;
+  margin-top: 2px;
+}
+
+.lt-dict-edit-back-box {
+  background: #141824;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.lt-dict-edit-back-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: #c4b5fd;
+  margin-bottom: 6px;
+}
+
+.lt-dict-edit-label {
+  display: block;
+  font-size: 10px;
+  color: #94a3b8;
+  margin-bottom: 3px;
+}
+
+.lt-dict-edit-input {
+  width: 100%;
+  background: #090d16;
+  color: #fde047;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.lt-dict-edit-textarea {
+  width: 100%;
+  background: #090d16;
+  color: #e4e4e7;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 11px;
+  resize: vertical;
+}
+
+.lt-dict-save-back-btn {
+  width: 100%;
+  background: #7c3aed;
+  color: #ffffff;
+  border: none;
+  border-radius: 7px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.lt-dict-save-back-btn:hover {
+  background: #6d28d9;
+}
+
+.lt-dict-pos-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+
+.lt-dict-pos-card-header {
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+}
+
+/* Lexa AI (Gemini) Contextual Explanation Card */
+.lt-dict-ai-card {
+  background: linear-gradient(135deg, rgba(76, 29, 149, 0.38), rgba(6, 78, 59, 0.25));
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 10px;
+  padding: 9px 10px;
+  margin-bottom: 10px;
+}
+
+.lt-dict-ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.lt-dict-ai-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: #ddd6fe;
+}
+
+.lt-dict-ai-trigger-btn {
+  background: #7c3aed;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.lt-dict-ai-trigger-btn:hover {
+  background: #6d28d9;
+}
+
+.lt-dict-ai-trigger-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.lt-dict-ai-result {
+  margin-top: 8px;
+  font-family: 'Vazirmatn', system-ui, sans-serif;
+}
+
+.lt-dict-ai-highlight-box {
+  background: rgba(9, 13, 22, 0.78);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 7px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+}
+
+.lt-dict-ai-hl-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #6ee7b7;
+}
+
+.lt-dict-ai-hl-value {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fde047;
+  margin-top: 2px;
+}
+
+.lt-dict-ai-sentence-fa {
+  font-size: 11px;
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 5px 8px;
+  margin-bottom: 6px;
+}
+
+.lt-dict-ai-nuance {
+  font-size: 11px;
+  color: #e2e8f0;
+  line-height: 1.55;
+  margin-bottom: 6px;
+}
+
+.lt-dict-ai-all-pos {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 5px;
+  margin-bottom: 7px;
+}
+
+.lt-dict-ai-save-anki-btn {
+  width: 100%;
+  background: rgba(16, 185, 129, 0.22);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #a7f3d0;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.lt-dict-ai-save-anki-btn:hover {
+  background: rgba(16, 185, 129, 0.35);
+  color: #ffffff;
+}
+
+.lt-dict-ai-placeholder,
+.lt-dict-ai-Subtle {
+  margin-top: 6px;
+  font-family: 'Vazirmatn', system-ui, sans-serif;
+  font-size: 11px;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+.lt-dict-ext-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lt-dict-ext-label {
+  font-size: 10px;
+  color: #9ca3af;
 }
 
 .lt-phrase-expander-bar {
@@ -599,24 +846,28 @@
 }
 
 .lt-dict-pos-block {
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .lt-dict-pos-tag {
   font-size: 11px;
   color: #4ade80;
   font-weight: 700;
-  display: block;
-  margin-bottom: 2px;
+  font-family: monospace;
+  flex-shrink: 0;
 }
 
 .lt-dict-pos-terms {
   font-family: 'Vazirmatn', system-ui, sans-serif;
   direction: rtl;
   unicode-bidi: plaintext;
-  font-size: 13px;
+  font-size: 12px;
   color: #f4f4f5;
-  display: block;
+  text-align: right;
   line-height: 1.45;
 }
 
@@ -634,49 +885,51 @@
 
 .lt-ext-dict-list {
   display: flex;
-  gap: 6px;
-  margin: 8px 0 10px;
+  gap: 5px;
 }
 
 .lt-ext-dict-pill {
   padding: 2px 7px;
   border-radius: 4px;
   background: #27272a;
-  color: #a1a1aa;
+  color: #cbd5e1;
   text-decoration: none;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
 }
 
 .lt-ext-dict-pill:hover {
   color: #ffffff;
-  background: #3f3f46;
+  background: #0b5772;
 }
 
 .lt-dict-section-title {
-  font-size: 11px;
-  font-weight: 700;
-  color: #9ca3af;
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
   margin: 10px 0 5px;
   padding-bottom: 3px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .lt-dict-example-item {
-  padding: 5px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 7px;
+  margin-bottom: 5px;
 }
 
 .lt-dict-ex-en {
   color: #e4e4e7;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.4;
 }
 
 .lt-dict-ex-fa {
   font-family: 'Vazirmatn', system-ui, sans-serif;
-  color: #a1a1aa;
-  font-size: 12px;
+  color: #fde047;
+  font-size: 11px;
   margin-top: 2px;
 }
 

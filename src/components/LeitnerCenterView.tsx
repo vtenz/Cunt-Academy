@@ -279,17 +279,15 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Portal Sub-Navigation Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-[#121521] border border-white/10 px-4 py-2.5 rounded-2xl shadow-lg">
+      {/* Top Portal Sub-Navigation Bar — Duolingo Tactile Pills */}
+      <div className="flex flex-wrap items-center justify-between gap-3 duo-card px-4 py-3">
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             data-testid="portal-tab-phrasepump"
             onClick={() => onChangeSubView('phrasepump')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 ${
-              activeSubView === 'phrasepump'
-                ? 'bg-violet-600 text-white shadow-md shadow-violet-600/25'
-                : 'text-slate-400 hover:text-white'
+            className={`duo-btn px-3.5 py-2 text-xs ${
+              activeSubView === 'phrasepump' ? 'duo-btn-green' : 'duo-btn-neutral'
             }`}
           >
             <span>⚡</span>
@@ -302,10 +300,8 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
             type="button"
             data-testid="portal-tab-saved"
             onClick={() => onChangeSubView('saved')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 ${
-              activeSubView === 'saved'
-                ? 'bg-violet-600 text-white shadow-md shadow-violet-600/25'
-                : 'text-slate-400 hover:text-white'
+            className={`duo-btn px-3.5 py-2 text-xs ${
+              activeSubView === 'saved' ? 'duo-btn-blue' : 'duo-btn-neutral'
             }`}
           >
             <span>📚</span>
@@ -316,10 +312,8 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
             type="button"
             data-testid="portal-tab-drills"
             onClick={() => onChangeSubView('drills')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 ${
-              activeSubView === 'drills'
-                ? 'bg-violet-600 text-white shadow-md shadow-violet-600/25'
-                : 'text-slate-400 hover:text-white'
+            className={`duo-btn px-3.5 py-2 text-xs ${
+              activeSubView === 'drills' ? 'duo-btn-purple' : 'duo-btn-neutral'
             }`}
           >
             <span>🎙</span>
@@ -330,10 +324,8 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
             type="button"
             data-testid="portal-tab-settings"
             onClick={() => onChangeSubView('settings')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 ${
-              activeSubView === 'settings'
-                ? 'bg-violet-600 text-white shadow-md shadow-violet-600/25'
-                : 'text-slate-400 hover:text-white'
+            className={`duo-btn px-3.5 py-2 text-xs ${
+              activeSubView === 'settings' ? 'duo-btn-orange' : 'duo-btn-neutral'
             }`}
           >
             <span>⚙</span>
@@ -344,7 +336,7 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
         <button
           type="button"
           onClick={handleExportSavedCsv}
-          className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-xs font-semibold"
+          className="duo-btn duo-btn-neutral px-3.5 py-2 text-xs"
         >
           📤 Export Anki CSV
         </button>
@@ -359,20 +351,20 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
             {/* Left (8 Cols): AnkiDroid SM-2 Interactive Flashcard & Practice Stage */}
             <div
               data-testid="phrasepump-hero-card"
-              className="lg:col-span-8 bg-[#121521] border border-violet-500/40 rounded-2xl p-5 shadow-2xl flex flex-col justify-between space-y-4"
+              className="lg:col-span-8 duo-card p-6 flex flex-col justify-between space-y-5"
             >
               {/* Header + Authentic AnkiDroid 3-Counter Bar (New Blue / Learning Red / Review Green) */}
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-500 via-violet-600 to-emerald-500 flex items-center justify-center text-xl text-white font-black shadow-lg">
+                  <div className="w-12 h-12 rounded-2xl bg-[#58CC02] border-b-4 border-[#58A700] flex items-center justify-center text-xl text-white font-black">
                     ★
                   </div>
                   <div>
-                    <h2 className="text-lg font-extrabold text-white tracking-tight">
+                    <h2 className="text-lg font-black duo-text-main tracking-tight">
                       AnkiDroid Spaced Repetition (SM-2) Studio
                     </h2>
-                    <p className="text-xs text-slate-400" dir="rtl">
-                      دقیقاً مطابق الگوریتم AnkiDroid: کارت‌های مرور شده تا موعد بعدی (فردا، ۴ روز دیگر، ۱۰ روز دیگر) از صف امروز خارج می‌شوند و تکرار بی‌مورد ندارند.
+                    <p className="text-xs font-bold duo-text-muted" dir="rtl">
+                      دقیقاً مطابق الگوریتم AnkiDroid: کارت‌های مرور شده تا موعد بعدی (فردا، ۴ روز دیگر، ۱۰ روز دیگر) از صف امروز خارج می‌شوند.
                     </p>
                   </div>
                 </div>
@@ -380,28 +372,58 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
                 {/* Authentic AnkiDroid 3 Counters: New (Blue) | Learning (Red) | Review Due (Green) */}
                 <div
                   data-testid="ankidroid-deck-counters"
-                  className="flex items-center gap-2 text-xs bg-[#0B0D14] border border-white/10 px-3.5 py-2 rounded-xl"
+                  className="flex items-center gap-2 text-xs duo-card-subtle px-3.5 py-2"
                 >
-                  <div className="px-2 text-center border-r border-white/10">
-                    <span className="block text-[10px] text-slate-400">New (جدید)</span>
-                    <strong data-testid="anki-new-count" className="text-sky-400 font-mono text-sm">
+                  <div className="px-2 text-center border-r-2 duo-border">
+                    <span className="block text-[10px] font-bold duo-text-muted">New (جدید)</span>
+                    <strong data-testid="anki-new-count" className="text-[#1CB0F6] font-mono text-sm font-black">
                       {ankiCounts.newCount}
                     </strong>
                   </div>
-                  <div className="px-2 text-center border-r border-white/10">
-                    <span className="block text-[10px] text-slate-400">Learn (در حال یادگیری)</span>
-                    <strong data-testid="anki-learning-count" className="text-rose-400 font-mono text-sm">
+                  <div className="px-2 text-center border-r-2 duo-border">
+                    <span className="block text-[10px] font-bold duo-text-muted">Learn (در حال یادگیری)</span>
+                    <strong data-testid="anki-learning-count" className="text-[#FF4B4B] font-mono text-sm font-black">
                       {ankiCounts.learningCount}
                     </strong>
                   </div>
                   <div className="px-2 text-center">
-                    <span className="block text-[10px] text-slate-400">Due (مرور امروز)</span>
+                    <span className="block text-[10px] font-bold duo-text-muted">Due (مرور امروز)</span>
                     <strong
                       data-testid="phrasepump-urgent-count"
-                      className="text-emerald-400 font-mono text-sm"
+                      className="text-[#58CC02] font-mono text-sm font-black"
                     >
                       {ankiCounts.reviewDueCount}
                     </strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Duolingo Glossy Progress Bar for Today's Reviews */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-black duo-text-muted" dir="rtl">
+                  <span>پیشرفت مرور امروز در جعبه لایتنر:</span>
+                  <span className="text-[#58CC02]">
+                    {toPersianDigits(todayReviewedCount)} مرور انجام شده • {toPersianDigits(pumpQueue.length)} باقی‌مانده
+                  </span>
+                </div>
+                <div className="w-full h-4 rounded-full duo-surface-secondary border-2 duo-border overflow-hidden relative">
+                  <div
+                    className="h-full bg-[#58CC02] rounded-full transition-all duration-300 relative"
+                    style={{
+                      width: `${Math.max(
+                        12,
+                        Math.min(
+                          100,
+                          Math.round(
+                            ((todayReviewedCount + 1) /
+                              Math.max(1, todayReviewedCount + pumpQueue.length)) *
+                              100
+                          )
+                        )
+                      )}%`,
+                    }}
+                  >
+                    <div className="bg-white/30 h-1 rounded-full mx-2 mt-1" />
                   </div>
                 </div>
               </div>
@@ -410,17 +432,17 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
                 <div
                   dir="rtl"
                   data-testid="anki-schedule-toast"
-                  className="px-3.5 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-emerald-200 text-xs font-bold flex items-center justify-between"
+                  className="px-4 py-2.5 rounded-2xl bg-[#D7FFB8] dark:bg-[#132E1E] border-2 border-[#58CC02] text-[#58A700] dark:text-[#58CC02] text-xs font-black flex items-center justify-between"
                 >
                   <span>{lastGradedFeedback}</span>
-                  <span className="text-[11px] font-mono text-emerald-300">
+                  <span className="text-[11px] font-mono font-black">
                     باقی‌مانده امروز: {toPersianDigits(pumpQueue.length)} کارت
                   </span>
                 </div>
               )}
 
               {/* 5 Practice Mode Selector Pills */}
-              <div className="flex flex-wrap items-center justify-between gap-2 p-1.5 rounded-xl bg-[#0B0D14] border border-white/10 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2 duo-card-subtle text-xs">
                 <div className="flex flex-wrap items-center gap-1.5">
                   {(
                     [
@@ -444,10 +466,8 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
                         setDrillInput('');
                         setDrillFeedback('idle');
                       }}
-                      className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
-                        practiceMode === m.id
-                          ? 'bg-violet-600 text-white shadow-md'
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                      className={`duo-btn px-3 py-1.5 text-xs ${
+                        practiceMode === m.id ? 'duo-btn-blue' : 'duo-btn-neutral'
                       }`}
                     >
                       <span>{m.icon}</span>
@@ -460,7 +480,7 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setCustomStudyAhead(false)}
-                    className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[11px] font-bold"
+                    className="duo-btn duo-btn-orange px-3 py-1 text-[11px]"
                   >
                     خروج از مطالعه زودتر از موعد
                   </button>
@@ -690,22 +710,22 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
                             setPumpRevealed(true);
                             speakText(activePumpCard.word);
                           }}
-                          className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-extrabold shadow-lg"
+                          className="w-full duo-btn duo-btn-green py-3.5 text-sm"
                         >
                           نمایش پاسخ (Show Answer • Space)
                         </button>
                       ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                           <button
                             type="button"
                             data-testid="anki-btn-again"
                             onClick={() => handlePumpGrade('again')}
-                            className="py-2.5 px-3 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/45 text-rose-200 flex flex-col items-center justify-center transition-all"
+                            className="duo-btn duo-btn-red py-2.5 px-3 flex flex-col items-center justify-center"
                           >
-                            <span className="text-[11px] font-mono text-rose-300">
+                            <span className="text-[11px] font-mono text-white/90">
                               {ankiNextPreview.againLabel}
                             </span>
-                            <span className="text-xs font-extrabold text-white mt-0.5">
+                            <span className="text-xs font-black text-white mt-0.5">
                               Again • دوباره (1)
                             </span>
                           </button>
@@ -714,12 +734,12 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
                             type="button"
                             data-testid="anki-btn-hard"
                             onClick={() => handlePumpGrade('hard')}
-                            className="py-2.5 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/45 text-amber-200 flex flex-col items-center justify-center transition-all"
+                            className="duo-btn duo-btn-orange py-2.5 px-3 flex flex-col items-center justify-center"
                           >
-                            <span className="text-[11px] font-mono text-amber-300">
+                            <span className="text-[11px] font-mono text-white/90">
                               {ankiNextPreview.hardLabel}
                             </span>
-                            <span className="text-xs font-extrabold text-white mt-0.5">
+                            <span className="text-xs font-black text-white mt-0.5">
                               Hard • سخت (2)
                             </span>
                           </button>
@@ -728,15 +748,15 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
                             type="button"
                             data-testid="anki-btn-good"
                             onClick={() => handlePumpGrade('good')}
-                            className="py-2.5 px-3 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/45 border border-emerald-400/60 text-emerald-200 flex flex-col items-center justify-center transition-all shadow-md"
+                            className="duo-btn duo-btn-green py-2.5 px-3 flex flex-col items-center justify-center"
                           >
                             <span
                               data-testid="anki-good-interval-label"
-                              className="text-[11px] font-mono text-emerald-300"
+                              className="text-[11px] font-mono text-white/90"
                             >
                               {ankiNextPreview.goodLabel}
                             </span>
-                            <span className="text-xs font-extrabold text-white mt-0.5">
+                            <span className="text-xs font-black text-white mt-0.5">
                               Good • خوب (3)
                             </span>
                           </button>
@@ -745,15 +765,15 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
                             type="button"
                             data-testid="anki-btn-easy"
                             onClick={() => handlePumpGrade('easy')}
-                            className="py-2.5 px-3 rounded-xl bg-sky-500/25 hover:bg-sky-500/40 border border-sky-400/55 text-sky-200 flex flex-col items-center justify-center transition-all"
+                            className="duo-btn duo-btn-blue py-2.5 px-3 flex flex-col items-center justify-center"
                           >
                             <span
                               data-testid="anki-easy-interval-label"
-                              className="text-[11px] font-mono text-sky-300"
+                              className="text-[11px] font-mono text-white/90"
                             >
                               {ankiNextPreview.easyLabel}
                             </span>
-                            <span className="text-xs font-extrabold text-white mt-0.5">
+                            <span className="text-xs font-black text-white mt-0.5">
                               Easy • آسان (4)
                             </span>
                           </button>
@@ -1153,56 +1173,56 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
             </div>
 
             {/* Right (4 Cols): Anki SM-2 Deck Breakdown & Activity Heatmap */}
-            <div className="lg:col-span-4 bg-[#121521] border border-white/10 rounded-2xl p-5 flex flex-col justify-between space-y-4">
+            <div className="lg:col-span-4 duo-card p-6 flex flex-col justify-between space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-base font-bold text-white">Anki SM-2 Deck Status</h3>
-                  <span className="px-2.5 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 text-[11px] font-bold">
+                  <h3 className="text-base font-black duo-text-main">Anki SM-2 Deck Status</h3>
+                  <span className="px-2.5 py-1 rounded-xl bg-[#58CC02]/15 text-[#58CC02] text-[11px] font-black">
                     SM-2 Algorithm
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mb-3" dir="rtl">
+                <p className="text-xs font-bold duo-text-muted mb-3" dir="rtl">
                   سیستم فاصله‌گذاری هوشمند آنکی: هر بار که گزینه Good یا Easy را می‌زنید، فاصله مرور در ضریب آسانی (Ease Factor) ضرب می‌شود.
                 </p>
 
-                <div className="space-y-2 text-xs mb-4" dir="rtl">
-                  <div className="p-2.5 rounded-xl bg-[#0B0D14] border border-white/10 flex items-center justify-between">
-                    <span className="text-sky-300 font-bold">🟦 کارت‌های جدید (New)</span>
-                    <span className="font-mono text-white">{toPersianDigits(ankiCounts.newCount)}</span>
+                <div className="space-y-2.5 text-xs mb-4" dir="rtl">
+                  <div className="p-3 duo-card-subtle flex items-center justify-between">
+                    <span className="text-[#1CB0F6] font-black">🟦 کارت‌های جدید (New)</span>
+                    <span className="font-mono font-black duo-text-main">{toPersianDigits(ankiCounts.newCount)}</span>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-[#0B0D14] border border-white/10 flex items-center justify-between">
-                    <span className="text-rose-300 font-bold">🟥 در حال یادگیری (Learning &lt; 1d)</span>
-                    <span className="font-mono text-white">{toPersianDigits(ankiCounts.learningCount)}</span>
+                  <div className="p-3 duo-card-subtle flex items-center justify-between">
+                    <span className="text-[#FF4B4B] font-black">🟥 در حال یادگیری (Learning &lt; 1d)</span>
+                    <span className="font-mono font-black duo-text-main">{toPersianDigits(ankiCounts.learningCount)}</span>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-[#0B0D14] border border-white/10 flex items-center justify-between">
-                    <span className="text-emerald-300 font-bold">🟩 سررسید مرور امروز (Review Due)</span>
-                    <span className="font-mono text-white">{toPersianDigits(ankiCounts.reviewDueCount)}</span>
+                  <div className="p-3 duo-card-subtle flex items-center justify-between">
+                    <span className="text-[#58CC02] font-black">🟩 سررسید مرور امروز (Review Due)</span>
+                    <span className="font-mono font-black duo-text-main">{toPersianDigits(ankiCounts.reviewDueCount)}</span>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-[#0B0D14] border border-white/10 flex items-center justify-between">
-                    <span className="text-violet-300 font-bold">🗓 زمان‌بندی‌شده برای روزهای آینده</span>
-                    <span className="font-mono text-white">
+                  <div className="p-3 duo-card-subtle flex items-center justify-between">
+                    <span className="text-[#CE82FF] font-black">🗓 زمان‌بندی‌شده برای روزهای آینده</span>
+                    <span className="font-mono font-black duo-text-main">
                       {toPersianDigits(ankiCounts.scheduledFutureCount)}
                     </span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-14 gap-1.5 p-3 bg-[#0B0D14] rounded-xl border border-white/10">
+                <div className="grid grid-cols-14 gap-1.5 p-3.5 duo-card-subtle">
                   {Array.from({ length: 56 }).map((_, idx) => {
                     const intensity = (idx * 7 + todayReviewedCount) % 5;
                     const bgClass =
                       idx === 55
-                        ? 'bg-emerald-400'
+                        ? 'bg-[#58CC02]'
                         : intensity === 0
-                          ? 'bg-slate-800/80'
+                          ? 'bg-[#E5E5E5] dark:bg-[#37464F]'
                           : intensity === 1
-                            ? 'bg-violet-950'
+                            ? 'bg-[#1CB0F6]/40'
                             : intensity === 2
-                              ? 'bg-violet-600/70'
-                              : 'bg-emerald-500/90';
+                              ? 'bg-[#1CB0F6]'
+                              : 'bg-[#58CC02]';
                     return (
                       <div
                         key={idx}
-                        className={`aspect-square rounded-[3px] ${bgClass}`}
+                        className={`aspect-square rounded-[4px] ${bgClass}`}
                         title={`Day ${idx + 1}: ${intensity * 4} reviews`}
                       />
                     );
@@ -1211,17 +1231,17 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
               </div>
 
               <div className="grid grid-cols-3 gap-2 pt-2 text-center text-xs">
-                <div className="p-2.5 rounded-xl bg-[#0B0D14] border border-white/10">
-                  <span className="text-slate-400 block text-[10px]">Today Done</span>
-                  <strong className="text-emerald-400 text-sm">{todayReviewedCount}</strong>
+                <div className="p-3 duo-card-subtle">
+                  <span className="duo-text-muted font-bold block text-[10px]">Today Done</span>
+                  <strong className="text-[#58CC02] text-sm font-black">{todayReviewedCount}</strong>
                 </div>
-                <div className="p-2.5 rounded-xl bg-[#0B0D14] border border-white/10">
-                  <span className="text-slate-400 block text-[10px]">Mature (21d+)</span>
-                  <strong className="text-violet-400 text-sm">{pipeline.learnedCount}</strong>
+                <div className="p-3 duo-card-subtle">
+                  <span className="duo-text-muted font-bold block text-[10px]">Mature (21d+)</span>
+                  <strong className="text-[#CE82FF] text-sm font-black">{pipeline.learnedCount}</strong>
                 </div>
-                <div className="p-2.5 rounded-xl bg-[#0B0D14] border border-white/10">
-                  <span className="text-slate-400 block text-[10px]">Saved Lines</span>
-                  <strong className="text-sky-400 text-sm">{savedSentences.length}</strong>
+                <div className="p-3 duo-card-subtle">
+                  <span className="duo-text-muted font-bold block text-[10px]">Saved Lines</span>
+                  <strong className="text-[#1CB0F6] text-sm font-black">{savedSentences.length}</strong>
                 </div>
               </div>
             </div>

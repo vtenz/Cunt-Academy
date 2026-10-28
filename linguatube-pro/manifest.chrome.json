@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Cunt Academy — Language Reactor & Trancy 1:1 Free Edition",
-  "version": "4.6.0",
-  "description": "Cunt Academy v4.6: 100% Free YouTube Language Learning Extension for Chrome, Brave & Edge with Gmail Cloud Sync, AnkiDroid SM-2 Flashcards, Editable Back of Card, Instant Multi-POS Dictionary, and Subtitle Sync Guard.",
+  "version": "4.7.0",
+  "description": "Cunt Academy v4.7: 100% Free YouTube Language Learning Extension for Chrome, Brave & Edge with Compact Toolbar Leitner Popup, Lexa AI Contextual Dictionary, Gmail Cloud Sync, and AnkiDroid SM-2 Flashcards.",
   "permissions": [
     "storage",
     "unlimitedStorage",
@@ -16,13 +16,15 @@
     "*://translate.googleapis.com/*",
     "*://api.dictionaryapi.dev/*",
     "*://api.mymemory.translated.net/*",
-    "*://tatoeba.org/*"
+    "*://tatoeba.org/*",
+    "<all_urls>"
   ],
   "background": {
     "service_worker": "background-sw.js"
   },
   "action": {
-    "default_title": "Cunt Academy v4.6 — Open AnkiDroid Flashcards, Cloud Sync & Saved Portal",
+    "default_title": "Cunt Academy v4.7 — جعبه لایتنر، فلش‌کارت AnkiDroid و ورود مستقیم به سایت",
+    "default_popup": "src/popup/popup.html",
     "default_icon": {
       "48": "icons/icon48.png",
       "96": "icons/icon96.png",
@@ -59,6 +61,7 @@
       "resources": [
         "src/content/page-interceptor.js",
         "src/dashboard/dashboard.html",
+        "src/popup/popup.html",
         "icons/icon48.png",
         "icons/icon96.png",
         "icons/icon128.png"

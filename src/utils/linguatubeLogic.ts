@@ -1928,3 +1928,214 @@ export const INITIAL_SAVED_SENTENCES: SavedSentence[] = [
   },
 ];
 
+// ============================================================================
+// DUOLINGO PRACTICE ENGINE (Match Pairs + Multiple Choice + 3D Word Bank)
+// ============================================================================
+
+export interface DuoMatchPair {
+  id: string;
+  wordEn: string;
+  meaningFa: string;
+}
+
+export interface DuoPracticeQuestion {
+  id: string;
+  type: 'match_pairs' | 'multiple_choice' | 'word_bank';
+  cardId: string;
+  targetWordEn: string;
+  targetPhonetic: string;
+  targetMeaningFa: string;
+  contextSentenceEn: string;
+  contextSentenceFa: string;
+  // For match_pairs:
+  matchPairs?: DuoMatchPair[];
+  shuffledMeaningsFa?: Array<{ id: string; meaningFa: string }>;
+  // For multiple_choice:
+  options?: Array<{ index: number; textFa: string; isCorrect: boolean }>;
+  correctOptionIndex?: number;
+  // For word_bank:
+  wordBankDirection?: 'en_from_fa' | 'sentence_build';
+  promptTitleFa?: string;
+  promptSubText?: string;
+  targetTokens?: string[];
+  bankTokens?: string[];
+}
+
+export function getShortPrimaryMeaningFa(rawTranslation: string): string {
+  const parts = String(rawTranslation || '')
+    .split(/[،,]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return parts.slice(0, 2).join('، ') || rawTranslation;
+}
+
+export function ensureMinimumPracticeCards(userCards: LeitnerCard[]): LeitnerCard[] {
+  const active = (userCards || []).filter((c) => c && c.word && c.translationFa && c.status !== 'ignored');
+  const map = new Map<string, LeitnerCard>();
+  for (const c of active) {
+    map.set(c.word.toLowerCase(), c);
+  }
+  if (map.size < 5) {
+    for (const seed of INITIAL_SEED_CARDS) {
+      const k = seed.word.toLowerCase();
+      if (!map.has(k)) {
+        map.set(k, seed);
+      }
+      if (map.size >= 6) break;
+    }
+  }
+  return Array.from(map.values());
+}
+
+export function buildDuoPracticeLesson(userCards: LeitnerCard[]): DuoPracticeQuestion[] {
+  const pool = ensureMinimumPracticeCards(userCards);
+  const questions: DuoPracticeQuestion[] = [];
+
+  // 1. Question 1: Match Pairs (5 English words + 5 Persian meanings)
+  const fiveCards = pool.slice(0, 5);
+  const matchPairs: DuoMatchPair[] = fiveCards.map((c) => ({
+    id: c.id,
+    wordEn: c.word,
+    meaningFa: getShortPrimaryMeaningFa(c.translationFa),
+  }));
+  // Deterministic rotation for Persian column so pairs aren't aligned 1:1 on the same row
+  const shuffledMeaningsFa = matchPairs.map((_, idx) => {
+    const rotated = matchPairs[(idx + 2) % matchPairs.length];
+    return { id: rotated.id, meaningFa: rotated.meaningFa };
+  });
+
+  questions.push({
+    id: 'duo-q-match-1',
+    type: 'multiple_choice' in fiveCards ? 'match_pairs' : 'match_pairs',
+    cardId: fiveCards[0].id,
+    targetWordEn: fiveCards[0].word,
+    targetPhonetic: fiveCards[0].phonetic,
+    targetMeaningFa: getShortPrimaryMeaningFa(fiveCards[0].translationFa),
+    contextSentenceEn: fiveCards[0].contextSentenceEn,
+    contextSentenceFa: fiveCards[0].contextSentenceFa,
+    matchPairs,
+    shuffledMeaningsFa,
+  });
+
+  // 2. Question 2 & 3: Smart Multiple Choice with Speech Bubble Context
+  for (let i = 0; i < Math.min(2, pool.length); i++) {
+    const card = pool[i];
+    const correctFa = getShortPrimaryMeaningFa(card.translationFa);
+    const distractors = pool
+      .filter((other) => other.id !== card.id)
+      .slice(0, 3)
+      .map((d) => getShortPrimaryMeaningFa(d.translationFa));
+
+    while (distractors.length < 3) {
+      distractors.push('معنی جایگزین آزمایشی');
+    }
+
+    const rawOptions = [
+      { textFa: correctFa, isCorrect: true },
+      { textFa: distractors[0], isCorrect: false },
+      { textFa: distractors[1], isCorrect: false },
+      { textFa: distractors[2], isCorrect: false },
+    ];
+    // Deterministic rotation based on index
+    const shift = (i + 1) % 4;
+    const rotatedOptions = rawOptions.map((_, idx) => {
+      const item = rawOptions[(idx + shift) % 4];
+      return {
+        index: idx + 1,
+        textFa: item.textFa,
+        isCorrect: item.isCorrect,
+      };
+    });
+    const correctOptionIndex = rotatedOptions.find((o) => o.isCorrect)?.index || 1;
+
+    questions.push({
+      id: `duo-q-mc-${card.id}`,
+      type: 'multiple_choice',
+      cardId: card.id,
+      targetWordEn: card.word,
+      targetPhonetic: card.phonetic || `/${card.word}/`,
+      targetMeaningFa: correctFa,
+      contextSentenceEn:
+        card.contextSentenceEn || `We use "${card.word}" in daily conversation.`,
+      contextSentenceFa: card.contextSentenceFa || card.translationFa,
+      options: rotatedOptions,
+      correctOptionIndex,
+    });
+  }
+
+  // 3. Question 4 & 5: 3D Word Bank (Build Sentence / Phrase from Word Chips)
+  for (let i = 0; i < Math.min(2, pool.length); i++) {
+    const card = pool[(i + 2) % pool.length];
+    const cleanSentence = (card.contextSentenceEn || card.word)
+      .replace(/[.!?]+$/g, '')
+      .trim();
+    const rawWords = cleanSentence.split(/\s+/).filter(Boolean);
+    const targetTokens = rawWords.length >= 3 && rawWords.length <= 12 ? rawWords : card.word.split(/\s+/);
+
+    const extraDistractors = ['always', 'quickly', 'system', 'future'].filter(
+      (d) => !targetTokens.some((t) => t.toLowerCase() === d)
+    );
+    const combined = [...targetTokens, ...extraDistractors.slice(0, 2)];
+    const bankTokens = combined.map((_, idx) => combined[(idx * 3 + 1) % combined.length]);
+
+    questions.push({
+      id: `duo-q-wb-${card.id}-${i}`,
+      type: 'word_bank',
+      cardId: card.id,
+      targetWordEn: card.word,
+      targetPhonetic: card.phonetic || `/${card.word}/`,
+      targetMeaningFa: getShortPrimaryMeaningFa(card.translationFa),
+      contextSentenceEn: card.contextSentenceEn || card.word,
+      contextSentenceFa: card.contextSentenceFa || card.translationFa,
+      wordBankDirection: 'sentence_build',
+      promptTitleFa: 'جمله و عبارت انگلیسی زیر را با انتخاب بلوک‌های کلمات بسازید:',
+      promptSubText: card.contextSentenceFa || card.translationFa,
+      targetTokens,
+      bankTokens,
+    });
+  }
+
+  // 4. Question 6: Final Multiple Choice Reinforcement
+  const lastCard = pool[Math.min(4, pool.length - 1)];
+  const lastCorrectFa = getShortPrimaryMeaningFa(lastCard.translationFa);
+  const lastDistractors = pool
+    .filter((other) => other.id !== lastCard.id)
+    .slice(0, 3)
+    .map((d) => getShortPrimaryMeaningFa(d.translationFa));
+
+  questions.push({
+    id: `duo-q-mc-final-${lastCard.id}`,
+    type: 'multiple_choice',
+    cardId: lastCard.id,
+    targetWordEn: lastCard.word,
+    targetPhonetic: lastCard.phonetic || `/${lastCard.word}/`,
+    targetMeaningFa: lastCorrectFa,
+    contextSentenceEn: lastCard.contextSentenceEn || `Mastering "${lastCard.word}" boosts your fluency.`,
+    contextSentenceFa: lastCard.contextSentenceFa || lastCard.translationFa,
+    options: [
+      { index: 1, textFa: lastDistractors[0] || 'گزینه اول', isCorrect: false },
+      { index: 2, textFa: lastCorrectFa, isCorrect: true },
+      { index: 3, textFa: lastDistractors[1] || 'گزینه سوم', isCorrect: false },
+      { index: 4, textFa: lastDistractors[2] || 'گزینه چهارم', isCorrect: false },
+    ],
+    correctOptionIndex: 2,
+  });
+
+  return questions;
+}
+
+export function gradeDuoWordBankAnswer(selectedTokens: string[], targetTokens: string[]): boolean {
+  const cleanSelected = (selectedTokens || [])
+    .join(' ')
+    .replace(/[.,!?]/g, '')
+    .trim()
+    .toLowerCase();
+  const cleanTarget = (targetTokens || [])
+    .join(' ')
+    .replace(/[.,!?]/g, '')
+    .trim()
+    .toLowerCase();
+  return Boolean(cleanTarget) && cleanSelected === cleanTarget;
+}
+
+

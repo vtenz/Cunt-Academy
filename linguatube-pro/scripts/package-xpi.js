@@ -137,29 +137,105 @@ function generatePngBuffer(size) {
   ihdr[12] = 0;
 
   const rawData = Buffer.alloc(size * (size * 4 + 1));
-  const center = size / 2;
-  const radius = size * 0.44;
+
+  // Helper for signed distance to a rounded box centered at (cx, cy) with half-size (hx, hy) and corner radius r
+  function sdRoundBox(px, py, cx, cy, hx, hy, r) {
+    const qx = Math.abs(px - cx) - hx + r;
+    const qy = Math.abs(py - cy) - hy + r;
+    return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
+  }
+
+  // Point in triangle helper
+  function inTriangle(px, py, x1, y1, x2, y2, x3, y3) {
+    const d1 = (px - x2) * (y1 - y2) - (x1 - x2) * (py - y2);
+    const d2 = (px - x3) * (y2 - y3) - (x2 - x3) * (py - y3);
+    const d3 = (px - x1) * (y3 - y1) - (x3 - x1) * (py - y1);
+    const hasNeg = d1 < 0 || d2 < 0 || d3 < 0;
+    const hasPos = d1 > 0 || d2 > 0 || d3 > 0;
+    return !(hasNeg && hasPos);
+  }
 
   for (let y = 0; y < size; y++) {
     const rowStart = y * (size * 4 + 1);
     rawData[rowStart] = 0;
+    const ny = y / size; // normalized 0..1
+
     for (let x = 0; x < size; x++) {
       const px = rowStart + 1 + x * 4;
-      const dx = x - center;
-      const dy = y - center;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= radius) {
-        const t = y / size;
-        rawData[px] = Math.round(14 * (1 - t) + 2 * t);
-        rawData[px + 1] = Math.round(165 * (1 - t) + 132 * t);
-        rawData[px + 2] = Math.round(233 * (1 - t) + 199 * t);
-        rawData[px + 3] = 255;
-      } else {
-        rawData[px] = 15;
-        rawData[px + 1] = 23;
-        rawData[px + 2] = 42;
-        rawData[px + 3] = 255;
+      const nx = x / size; // normalized 0..1
+
+      // 1. Outer rounded app icon shell
+      const dOuter = sdRoundBox(nx, ny, 0.5, 0.5, 0.46, 0.46, 0.2);
+      if (dOuter > 0.01) {
+        rawData[px] = 0;
+        rawData[px + 1] = 0;
+        rawData[px + 2] = 0;
+        rawData[px + 3] = 0;
+        continue;
       }
+
+      // Base obsidian-indigo-violet gradient
+      let r = Math.round(18 * (1 - ny) + 12 * ny);
+      let g = Math.round(22 * (1 - ny) + 28 * ny);
+      let b = Math.round(42 * (1 - ny) + 52 * ny);
+
+      // Glowing outer border ring (violet -> emerald)
+      if (dOuter > -0.045) {
+        r = Math.round(139 * (1 - nx) + 16 * nx);
+        g = Math.round(92 * (1 - nx) + 185 * nx);
+        b = Math.round(246 * (1 - nx) + 129 * nx);
+      }
+
+      // 2. Central Leitner Card stage (nx: 0.18..0.82, ny: 0.20..0.68)
+      const dCard = sdRoundBox(nx, ny, 0.5, 0.44, 0.32, 0.23, 0.08);
+      if (dCard <= 0) {
+        if (dCard > -0.028) {
+          // Card border (violet-cyan)
+          r = Math.round(124 * (1 - nx) + 52 * nx);
+          g = Math.round(92 * (1 - nx) + 211 * nx);
+          b = Math.round(252 * (1 - nx) + 153 * nx);
+        } else {
+          r = 15;
+          g = 19;
+          b = 34;
+        }
+      }
+
+      // 3. Central Emerald-Cyan Play Triangle inside the Card
+      if (inTriangle(nx, ny, 0.41, 0.31, 0.41, 0.57, 0.64, 0.44)) {
+        const t = (ny - 0.31) / 0.26;
+        r = Math.round(52 * (1 - t) + 14 * t);
+        g = Math.round(211 * (1 - t) + 165 * t);
+        b = Math.round(153 * (1 - t) + 233 * t);
+      }
+
+      // 4. Dual-Subtitle Bars at Bottom (White EN bar + Gold FA bar)
+      const dSubEn = sdRoundBox(nx, ny, 0.5, 0.77, 0.28, 0.025, 0.012);
+      if (dSubEn <= 0) {
+        r = 248;
+        g = 250;
+        b = 252;
+      }
+      const dSubFa = sdRoundBox(nx, ny, 0.5, 0.855, 0.2, 0.024, 0.012);
+      if (dSubFa <= 0) {
+        r = 253;
+        g = 224;
+        b = 71;
+      }
+
+      // 5. Top Gold AI Sparkle Diamond
+      const dxStar = Math.abs(nx - 0.5);
+      const dyStar = Math.abs(ny - 0.125);
+      if (dxStar + dyStar <= 0.055) {
+        r = 253;
+        g = 224;
+        b = 71;
+      }
+
+      rawData[px] = r;
+      rawData[px + 1] = g;
+      rawData[px + 2] = b;
+      rawData[px + 3] = 255;
     }
   }
 

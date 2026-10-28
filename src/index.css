@@ -1,45 +1,265 @@
 @import "tailwindcss";
 
 @layer base {
-  :root {
-    font-family: 'Vazirmatn', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  :root,
+  [data-theme="light"] {
+    --duo-bg-main: #FFFFFF;
+    --duo-bg-secondary: #F7F7F7;
+    --duo-bg-card: #FFFFFF;
+    --duo-border: #E5E5E5;
+    --duo-border-strong: #CECECE;
+    --duo-text-main: #3C3C3C;
+    --duo-text-muted: #777777;
+    --duo-active-bg: #DDF4FF;
+    --duo-active-border: #84D8FF;
+    --duo-active-text: #1899D6;
+    --duo-sheet-correct-bg: #D7FFB8;
+    --duo-sheet-correct-border: #58CC02;
+    --duo-sheet-correct-text: #58A700;
+    --duo-sheet-wrong-bg: #FFDFE0;
+    --duo-sheet-wrong-border: #FF4B4B;
+    --duo-sheet-wrong-text: #EA2B2B;
+    font-family: 'Nunito', 'Vazirmatn', system-ui, -apple-system, sans-serif;
+  }
+
+  [data-theme="dark"] {
+    --duo-bg-main: #131F24;
+    --duo-bg-secondary: #1B2B32;
+    --duo-bg-card: #1B2B32;
+    --duo-border: #37464F;
+    --duo-border-strong: #4B5E6A;
+    --duo-text-main: #F1F7FB;
+    --duo-text-muted: #8B9EA7;
+    --duo-active-bg: #1B2B32;
+    --duo-active-border: #84D8FF;
+    --duo-active-text: #1CB0F6;
+    --duo-sheet-correct-bg: #132E1E;
+    --duo-sheet-correct-border: #58CC02;
+    --duo-sheet-correct-text: #58CC02;
+    --duo-sheet-wrong-bg: #35191D;
+    --duo-sheet-wrong-border: #FF4B4B;
+    --duo-sheet-wrong-text: #FF4B4B;
   }
 
   body {
-    font-family: 'Vazirmatn', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    background-color: #090d16;
-    color: #f8fafc;
+    font-family: 'Nunito', 'Vazirmatn', system-ui, -apple-system, sans-serif;
+    background-color: var(--duo-bg-main);
+    color: var(--duo-text-main);
     direction: rtl;
+    margin: 0;
   }
 
   code,
   pre,
   .font-mono {
-    font-family: 'JetBrains Mono', 'Plus Jakarta Sans', 'Vazirmatn', system-ui, monospace;
+    font-family: 'JetBrains Mono', 'Nunito', 'Vazirmatn', monospace;
   }
 }
 
+/* Duolingo Feather Design System — Flat & Tactile 3D Primitives (Zero Blurry Shadows) */
+.duo-surface-main {
+  background-color: var(--duo-bg-main);
+  color: var(--duo-text-main);
+}
+
+.duo-surface-secondary {
+  background-color: var(--duo-bg-secondary);
+  color: var(--duo-text-main);
+}
+
+.duo-card {
+  background-color: var(--duo-bg-card);
+  border: 2px solid var(--duo-border);
+  border-bottom-width: 4px;
+  border-radius: 1.5rem;
+  color: var(--duo-text-main);
+}
+
+.duo-card-subtle {
+  background-color: var(--duo-bg-secondary);
+  border: 2px solid var(--duo-border);
+  border-bottom-width: 4px;
+  border-radius: 1.25rem;
+  color: var(--duo-text-main);
+}
+
+.duo-text-muted {
+  color: var(--duo-text-muted);
+}
+
+.duo-border-color {
+  border-color: var(--duo-border);
+}
+
+/* Tactile 3D Buttons */
+.duo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border-width: 2px;
+  border-bottom-width: 4px;
+  transition: all 75ms ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.duo-btn:active:not(:disabled) {
+  border-bottom-width: 0px;
+  transform: translateY(4px);
+}
+
+.duo-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.duo-btn-green {
+  background-color: #58CC02;
+  border-color: #58A700;
+  color: #FFFFFF;
+}
+.duo-btn-green:hover:not(:disabled) {
+  background-color: #61E002;
+}
+
+.duo-btn-blue {
+  background-color: #1CB0F6;
+  border-color: #1899D6;
+  color: #FFFFFF;
+}
+.duo-btn-blue:hover:not(:disabled) {
+  background-color: #20BEF6;
+}
+
+.duo-btn-purple {
+  background-color: #CE82FF;
+  border-color: #A568CC;
+  color: #FFFFFF;
+}
+.duo-btn-purple:hover:not(:disabled) {
+  background-color: #D794FF;
+}
+
+.duo-btn-yellow {
+  background-color: #FFC800;
+  border-color: #E5B400;
+  color: #3C3C3C;
+}
+.duo-btn-yellow:hover:not(:disabled) {
+  background-color: #FFD224;
+}
+
+.duo-btn-red {
+  background-color: #FF4B4B;
+  border-color: #EA2B2B;
+  color: #FFFFFF;
+}
+.duo-btn-red:hover:not(:disabled) {
+  background-color: #FF5E5E;
+}
+
+.duo-btn-orange {
+  background-color: #FF9600;
+  border-color: #CC7800;
+  color: #FFFFFF;
+}
+.duo-btn-orange:hover:not(:disabled) {
+  background-color: #FFA41B;
+}
+
+.duo-btn-neutral {
+  background-color: var(--duo-bg-card);
+  border-color: var(--duo-border);
+  color: var(--duo-text-main);
+}
+.duo-btn-neutral:hover:not(:disabled) {
+  background-color: var(--duo-bg-secondary);
+}
+
+/* Neutral Word Chips */
+.duo-chip {
+  background-color: var(--duo-bg-card);
+  border: 2px solid var(--duo-border);
+  border-bottom-width: 4px;
+  border-radius: 1rem;
+  font-weight: 700;
+  color: var(--duo-text-main);
+  transition: all 75ms ease;
+  cursor: pointer;
+  user-select: none;
+}
+.duo-chip:hover:not(:disabled) {
+  background-color: var(--duo-bg-secondary);
+}
+.duo-chip:active:not(:disabled) {
+  border-bottom-width: 2px;
+  transform: translateY(2px);
+}
+.duo-chip.is-selected {
+  background-color: var(--duo-active-bg);
+  border-color: var(--duo-active-border);
+  color: var(--duo-active-text);
+}
+.duo-chip.is-matched {
+  background-color: #58CC02;
+  border-color: #58A700;
+  color: #FFFFFF;
+}
+.duo-chip.is-wrong {
+  background-color: #FF4B4B;
+  border-color: #EA2B2B;
+  color: #FFFFFF;
+}
+
+/* Sidebar Nav Item */
+.duo-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+  font-weight: 800;
+  border: 2px solid transparent;
+  color: var(--duo-text-muted);
+  transition: all 75ms ease;
+  cursor: pointer;
+}
+.duo-nav-item:hover {
+  background-color: var(--duo-bg-secondary);
+  color: var(--duo-text-main);
+}
+.duo-nav-item.is-active {
+  background-color: var(--duo-active-bg);
+  border-color: #84D8FF;
+  color: var(--duo-active-text);
+}
+
 .rtl-plaintext {
-  font-family: 'Vazirmatn', 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-family: 'Vazirmatn', 'Nunito', system-ui, sans-serif;
   direction: rtl;
   unicode-bidi: plaintext;
   text-align: right;
 }
 
 .ltr-plaintext {
-  font-family: 'Plus Jakarta Sans', 'Vazirmatn', system-ui, sans-serif;
+  font-family: 'Nunito', 'Vazirmatn', system-ui, sans-serif;
   direction: ltr;
   unicode-bidi: plaintext;
   text-align: left;
 }
 
 .phonetic-text {
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-family: 'Nunito', system-ui, -apple-system, sans-serif;
   direction: ltr;
   unicode-bidi: isolate;
 }
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;
-  font-family: 'JetBrains Mono', 'Vazirmatn', monospace;
+  font-family: 'Nunito', 'Vazirmatn', monospace;
 }

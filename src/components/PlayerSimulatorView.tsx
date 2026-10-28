@@ -797,16 +797,16 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
       {toastMessage && (
         <div
           dir="rtl"
-          className="fixed bottom-5 left-5 z-50 bg-[#16192b]/95 border border-violet-500/50 text-violet-100 px-4 py-2.5 rounded-xl shadow-2xl text-xs font-medium"
+          className="fixed bottom-5 left-5 z-50 duo-card px-4 py-3 text-xs font-black duo-text-main"
         >
           {toastMessage}
         </div>
       )}
 
       {/* Main Split Workspace: Left YouTube Player Stage + Right 3-Tab Cunt Academy Dock */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN (8 Cols): Interactive YouTube Player Stage */}
-        <div className="lg:col-span-8 bg-[#0B0D14] border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+        <div className="lg:col-span-8 duo-card overflow-hidden flex flex-col">
           {/* Video Stage Canvas */}
           <div
             ref={playerContainerRef}
@@ -875,7 +875,7 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
               <div
                 data-testid="floating-dictionary-popup"
                 onClick={(e) => e.stopPropagation()}
-                className="absolute top-3 right-3 bottom-16 z-30 w-full max-w-[405px] bg-[#141722]/98 border border-white/15 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-left backdrop-blur-xl"
+                className="absolute top-3 right-3 bottom-16 z-30 w-full max-w-[405px] bg-[#131F24] border-2 border-b-4 border-[#37464F] rounded-3xl flex flex-col overflow-hidden text-left"
               >
                 {/* Top Status Action Strip: Known (Green) | Learn (Orange) | Ignore (Purple) */}
                 <div className="flex items-center gap-1.5 px-3 py-2 bg-[#0B0D14] border-b border-white/10">
@@ -1194,12 +1194,12 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
               </div>
             )}
 
-            {/* TRANCY LIVE SUBTITLE CUSTOMIZATION POPOVER (word_by_word_trancy_a0703cdc.mp4) */}
+            {/* TRANCY LIVE SUBTITLE CUSTOMIZATION POPOVER */}
             {trancyStyleDrawerOpen && (
               <div
                 onClick={(e) => e.stopPropagation()}
                 dir="rtl"
-                className="absolute top-3 left-3 z-30 w-full max-w-[350px] bg-[#141722]/98 border border-violet-500/40 rounded-2xl p-4 shadow-2xl space-y-3 text-xs backdrop-blur-xl"
+                className="absolute top-3 left-3 z-30 w-full max-w-[350px] bg-[#131F24] border-2 border-b-4 border-[#37464F] rounded-3xl p-4 space-y-3 text-xs"
               >
                 <div className="flex items-center justify-between border-b border-white/10 pb-2">
                   <span className="font-extrabold text-white text-sm">🎨 شخصی‌سازی زیرنویس (Trancy + LR)</span>
@@ -1804,16 +1804,14 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
           </div>
 
           {/* Bottom Bar below the player: Word-by-Word Karaoke Toggle + Word Color Highlighting Mode + Listening Mode */}
-          <div className="px-4 py-2.5 bg-[#121521] border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="px-4 py-3 duo-surface-secondary border-t-2 duo-border flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 data-testid="toggle-karaoke-btn"
                 onClick={() => onUpdateSettings({ wordByWordHighlight: !settings.wordByWordHighlight })}
-                className={`px-2.5 py-1 rounded-md font-bold border transition-colors ${
-                  settings.wordByWordHighlight
-                    ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
-                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                className={`duo-btn px-3 py-1.5 text-xs ${
+                  settings.wordByWordHighlight ? 'duo-btn-green' : 'duo-btn-neutral'
                 }`}
               >
                 ✨ روشن شدن کلمه به کلمه (Trancy): {settings.wordByWordHighlight ? 'فعال' : 'غیرفعال'}
@@ -1830,10 +1828,10 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                     wordColors: { ...WORD_COLOR_PRESETS['default-lr'].colors },
                   })
                 }
-                className={`px-2.5 py-1 rounded-md font-semibold border transition-colors ${
+                className={`duo-btn px-3 py-1.5 text-xs ${
                   settings.vocabularyHighlighting !== 'Disabled' && settings.wordColorPreset === 'default-lr'
-                    ? 'bg-violet-600/25 border-violet-400 text-violet-200'
-                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                    ? 'duo-btn-blue'
+                    : 'duo-btn-neutral'
                 }`}
               >
                 هایلایت سطح دشواری واژگان (سبز / نارنجی)
@@ -1849,10 +1847,10 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                     wordColors: { ...WORD_COLOR_PRESETS['kevin-hunting'].colors },
                   })
                 }
-                className={`px-2.5 py-1 rounded-md font-semibold border transition-colors ${
+                className={`duo-btn px-3 py-1.5 text-xs ${
                   settings.vocabularyHighlighting !== 'Disabled' && settings.wordColorPreset === 'kevin-hunting'
-                    ? 'bg-red-600/25 border-red-400 text-red-200'
-                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                    ? 'duo-btn-red'
+                    : 'duo-btn-neutral'
                 }`}
               >
                 Kevin&apos;s Hunting
@@ -1860,7 +1858,7 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1.5 text-slate-300">
+              <label className="flex items-center gap-1.5 duo-text-main font-bold">
                 <span>حالت شنیداری:</span>
                 <select
                   aria-label="حالت مخفی‌سازی زیرنویس"
@@ -1871,7 +1869,7 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                       hideSubtitles: e.target.value as LanguageReactorSettings['hideSubtitles'],
                     });
                   }}
-                  className="bg-[#0B0D14] border border-white/15 rounded px-2 py-1 text-xs text-slate-200"
+                  className="duo-surface-main border-2 duo-border rounded-xl px-2.5 py-1 text-xs font-bold duo-text-main"
                 >
                   <option value="disabled">Show both (نمایش کامل)</option>
                   <option value="blur_translation">Hide translations (تار کردن ترجمه)</option>
@@ -1886,16 +1884,14 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
         </div>
 
         {/* RIGHT COLUMN (4 Cols): 3-Tab Cunt Academy Dock (Subtitles | Words | Saved) */}
-        <div className="lg:col-span-4 bg-[#121521] border border-white/10 rounded-2xl overflow-hidden shadow-xl flex flex-col h-[605px]">
-          <div className="px-3 py-2.5 bg-[#161A29] border-b border-white/10 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1">
+        <div className="lg:col-span-4 duo-card overflow-hidden flex flex-col h-[605px]">
+          <div className="px-3.5 py-3 duo-surface-secondary border-b-2 duo-border flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setRightTab('subtitles')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  rightTab === 'subtitles'
-                    ? 'bg-violet-600/25 text-violet-300 border border-violet-500/40'
-                    : 'text-slate-400 hover:text-slate-200'
+                className={`duo-btn px-3 py-1.5 text-xs ${
+                  rightTab === 'subtitles' ? 'duo-btn-blue' : 'duo-btn-neutral'
                 }`}
               >
                 Subtitles
@@ -1903,10 +1899,8 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
               <button
                 type="button"
                 onClick={() => setRightTab('words')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  rightTab === 'words'
-                    ? 'bg-violet-600/25 text-violet-300 border border-violet-500/40'
-                    : 'text-slate-400 hover:text-slate-200'
+                className={`duo-btn px-3 py-1.5 text-xs ${
+                  rightTab === 'words' ? 'duo-btn-blue' : 'duo-btn-neutral'
                 }`}
               >
                 Words ({allVideoWords.length})
@@ -1914,10 +1908,8 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
               <button
                 type="button"
                 onClick={() => setRightTab('saved')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  rightTab === 'saved'
-                    ? 'bg-violet-600/25 text-violet-300 border border-violet-500/40'
-                    : 'text-slate-400 hover:text-slate-200'
+                className={`duo-btn px-3 py-1.5 text-xs ${
+                  rightTab === 'saved' ? 'duo-btn-blue' : 'duo-btn-neutral'
                 }`}
               >
                 Saved ({cards.length})
@@ -1929,7 +1921,7 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                 type="button"
                 data-testid="open-export-modal-btn"
                 onClick={() => setExportModalOpen(true)}
-                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold"
+                className="duo-btn duo-btn-neutral px-2.5 py-1.5 text-xs"
                 title="Export Subtitles (Print HTML / Excel CSV)"
               >
                 📤 Export
@@ -1937,7 +1929,7 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
               <button
                 type="button"
                 onClick={onOpenSettingsPage}
-                className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs"
+                className="duo-btn duo-btn-neutral px-2.5 py-1.5 text-xs"
                 title="تنظیمات کامل Cunt Academy"
               >
                 ⚙
@@ -1945,7 +1937,7 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto divide-y divide-white/5">
+          <div className="flex-1 overflow-y-auto divide-y-2 duo-border">
             {rightTab === 'subtitles' &&
               cues.map((cue, idx) => {
                 const isActive = idx === activeCueIndex;
@@ -1957,23 +1949,23 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                       setSpokenWordCursor(0);
                       setCueRevealedStep(0);
                     }}
-                    className={`p-3 cursor-pointer transition-colors ${
+                    className={`p-3.5 cursor-pointer transition-colors ${
                       isActive
-                        ? 'bg-violet-950/35 border-l-4 border-l-violet-500'
-                        : 'hover:bg-white/5'
+                        ? 'bg-[#DDF4FF] dark:bg-[#1B2B32] border-l-4 border-l-[#1CB0F6]'
+                        : 'hover:opacity-90'
                     }`}
                   >
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
-                      <span className="font-mono text-violet-300">
+                    <div className="flex items-center justify-between text-[11px] font-bold duo-text-muted mb-1">
+                      <span className="font-mono font-black text-[#1CB0F6]">
                         ▶ {formatTimestamp(cue.tStartMs / 1000)}
                       </span>
                       <span>Cue #{idx + 1}</span>
                     </div>
-                    <div className="text-xs font-medium text-slate-100 leading-relaxed">
+                    <div className="text-xs font-extrabold duo-text-main leading-relaxed">
                       {cue.textEn}
                     </div>
                     {settings.showMachineTranslation && (
-                      <div dir="rtl" className="text-xs text-amber-300/90 mt-1 leading-relaxed">
+                      <div dir="rtl" className="text-xs font-bold text-[#FF9600] mt-1 leading-relaxed">
                         {cue.textFa}
                       </div>
                     )}
@@ -1983,23 +1975,21 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
 
             {rightTab === 'words' && (
               <div>
-                <div className="p-2.5 bg-[#0B0D14] flex flex-wrap gap-1.5 border-b border-white/10">
+                <div className="p-2.5 duo-surface-secondary flex flex-wrap gap-1.5 border-b-2 duo-border">
                   {(['all', 'suggested', 'learning', 'known'] as const).map((cat) => (
                     <button
                       key={cat}
                       type="button"
                       onClick={() => setWordFilterCat(cat)}
-                      className={`px-2.5 py-1 rounded text-[11px] font-semibold capitalize ${
-                        wordFilterCat === cat
-                          ? 'bg-violet-600 text-white'
-                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      className={`duo-btn px-2.5 py-1 text-[11px] capitalize ${
+                        wordFilterCat === cat ? 'duo-btn-blue' : 'duo-btn-neutral'
                       }`}
                     >
                       {cat}
                     </button>
                   ))}
                 </div>
-                <div className="divide-y divide-white/5">
+                <div className="divide-y-2 duo-border">
                   {allVideoWords
                     .filter((w) => (wordFilterCat === 'all' ? true : w.category === wordFilterCat))
                     .map((item) => (
@@ -2010,7 +2000,7 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                           setSelectedPhrase(item.word);
                           setFloatingPopupOpen(true);
                         }}
-                        className="px-3.5 py-2.5 flex items-center justify-between hover:bg-white/5 cursor-pointer text-xs"
+                        className="px-3.5 py-2.5 flex items-center justify-between hover:opacity-85 cursor-pointer text-xs"
                       >
                         <div className="flex items-center gap-2">
                           <span
@@ -2019,9 +2009,9 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                               backgroundColor: settings.wordColors[item.category] || '#71717a',
                             }}
                           />
-                          <span className="font-bold text-slate-100">{item.word}</span>
+                          <span className="font-black duo-text-main">{item.word}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
+                        <div className="flex items-center gap-2 text-[11px] duo-text-muted font-mono font-bold">
                           <span>
                             {item.cefr} • {item.freqTag}
                           </span>
@@ -2035,19 +2025,19 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
 
             {rightTab === 'saved' && (
               <div>
-                <div className="p-3 bg-[#0B0D14] flex items-center justify-between border-b border-white/10 text-xs">
-                  <span className="text-slate-300">
+                <div className="p-3 duo-surface-secondary flex items-center justify-between border-b-2 duo-border text-xs">
+                  <span className="duo-text-muted font-bold">
                     {cards.length} واژه و عبارت • {savedSentences.length} جمله
                   </span>
                   <button
                     type="button"
                     onClick={onOpenPhrasePump}
-                    className="px-2.5 py-1 rounded bg-violet-600 hover:bg-violet-500 text-white font-bold text-[11px]"
+                    className="duo-btn duo-btn-green px-3 py-1 text-[11px]"
                   >
                     ⚡ تمرین فلش‌کارت و PhrasePump
                   </button>
                 </div>
-                <div className="divide-y divide-white/5">
+                <div className="divide-y-2 duo-border">
                   {cards.map((c) => (
                     <div
                       key={c.id}
@@ -2055,7 +2045,7 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                         setSelectedPhrase(c.word);
                         setFloatingPopupOpen(true);
                       }}
-                      className="px-3.5 py-2.5 flex items-center justify-between hover:bg-white/5 cursor-pointer text-xs"
+                      className="px-3.5 py-2.5 flex items-center justify-between hover:opacity-85 cursor-pointer text-xs"
                     >
                       <div className="flex items-center gap-2">
                         <span
@@ -2069,15 +2059,15 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                                   : settings.wordColors.learning,
                           }}
                         />
-                        <strong className="text-slate-100">{c.word}</strong>
+                        <strong className="duo-text-main font-black">{c.word}</strong>
                         {c.isPhrase && (
-                          <span className="px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300 text-[9px] font-bold">
+                          <span className="px-1.5 py-0.5 rounded bg-[#CE82FF]/20 text-[#CE82FF] text-[9px] font-black">
                             PHRASE
                           </span>
                         )}
-                        <span className="text-[10px] font-mono text-slate-400">Box {c.box}</span>
+                        <span className="text-[10px] font-mono font-bold duo-text-muted">Box {c.box}</span>
                       </div>
-                      <span dir="rtl" className="text-amber-300 font-medium">
+                      <span dir="rtl" className="text-[#58CC02] font-black">
                         {c.translationFa}
                       </span>
                     </div>
