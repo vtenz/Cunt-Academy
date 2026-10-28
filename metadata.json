@@ -1,0 +1,6 @@
+{
+  "name": "LinguaTube Pro — YouTube Dual-Subtitle & Leitner Suite",
+  "description": "Production-ready Firefox & Zen Browser WebExtension (Gecko MV3) and interactive learning suite for YouTube dual subtitles, 4-tier free Persian dictionary, and 5-box Leitner spaced repetition.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

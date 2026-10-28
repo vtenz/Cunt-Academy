@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cunt Academy Portal — Flashcards, PhrasePump, Saved Vocabulary & Subtitle Studio</title>
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <div class="lr-app-shell">
+    <!-- Left Navigation Sidebar (Trancy Aesthetic + Cunt Academy Branding) -->
+    <aside class="lr-sidebar">
+      <div class="lr-brand">
+        <div class="lr-logo-circle">CA</div>
+        <div class="lr-brand-text">
+          <span class="lr-brand-top">CUNT</span>
+          <strong class="lr-brand-bottom">ACADEMY</strong>
+        </div>
+      </div>
+
+      <div class="lr-lang-pill">
+        <span class="lr-lang-badge">EN</span>
+        <span>English → Persian (FA)</span>
+      </div>
+
+      <nav class="lr-nav">
+        <button type="button" class="lr-nav-item active" data-nav="phrasepump">
+          <span class="lr-nav-icon">⚡</span>
+          <span>Practice Hub & Flashcards</span>
+        </button>
+        <button type="button" class="lr-nav-item" data-nav="saved">
+          <span class="lr-nav-icon">📚</span>
+          <span>Saved Words & Phrases</span>
+        </button>
+        <button type="button" class="lr-nav-item" data-nav="drills">
+          <span class="lr-nav-icon">🎙</span>
+          <span>Listening & Sentence Builder</span>
+        </button>
+        <button type="button" class="lr-nav-item" data-nav="settings">
+          <span class="lr-nav-icon">⚙</span>
+          <span>Subtitle & LR Settings</span>
+        </button>
+      </nav>
+
+      <div class="lr-sidebar-footer">
+        <button type="button" class="lr-action-btn" id="lr-seed-demo-btn">+ Load Words & Phrasal Verbs</button>
+        <button type="button" class="lr-action-btn" id="lr-export-json-btn">⬇ Backup JSON</button>
+      </div>
+    </aside>
+
+    <!-- Main Content Viewport -->
+    <main class="lr-main">
+      <!-- CLOUD ACCOUNT SYNC & PUBLIC DOMAIN BANNER -->
+      <div id="lr-cloud-sync-banner" style="background:linear-gradient(90deg, rgba(16,185,129,0.14), rgba(124,92,252,0.16));border:1px solid rgba(16,185,129,0.4);border-radius:14px;padding:12px 16px;margin-bottom:16px;">
+        <div id="lr-cloud-sync-content"></div>
+      </div>
+
+      <!-- VIEW 1: PRACTICE HUB (Manual-Flip 3D Flashcards + PhrasePump Cloze + Speed Match) -->
+      <section class="lr-view active" id="view-phrasepump">
+        <div class="lr-pump-top-grid">
+          <div class="lr-pump-hero-card">
+            <div class="lr-pump-title-row">
+              <div class="lr-pump-title-left">
+                <span class="lr-pump-fan-icon">⚡</span>
+                <div>
+                  <h1>Cunt Academy Practice Studio</h1>
+                  <p>Manual-Flip 3D Flashcards, PhrasePump Cloze & Phrasal Verb Mastery</p>
+                </div>
+              </div>
+              <div class="lr-mode-switcher">
+                <button type="button" class="lr-mode-btn active" data-practice-mode="flashcard">🃏 Manual Flashcards</button>
+                <button type="button" class="lr-mode-btn" data-practice-mode="cloze">🪭 PhrasePump Cloze</button>
+                <button type="button" class="lr-mode-btn" data-practice-mode="match">🧩 Speed Match</button>
+              </div>
+            </div>
+
+            <div class="lr-pump-stats-strip">
+              <div class="lr-pump-stat-box">
+                <span class="label">Today's Practice</span>
+                <strong id="pump-reviewed-today">0 / 20</strong>
+              </div>
+              <div class="lr-pump-stat-box urgent">
+                <span class="label">Due for Review</span>
+                <strong id="pump-due-count">0</strong>
+              </div>
+              <div class="lr-pump-stat-box">
+                <span class="label">Saved Words & Idioms</span>
+                <strong id="pump-total-count">0</strong>
+              </div>
+            </div>
+
+            <div id="pump-session-area" class="lr-pump-session-area">
+              <!-- Populated dynamically by dashboard.js -->
+            </div>
+          </div>
+
+          <!-- Right: Statistics Heatmap Card -->
+          <div class="lr-stats-card">
+            <div class="lr-stats-header">
+              <h2>Activity Heatmap</h2>
+              <div class="lr-stats-tabs">
+                <span class="active">8 Weeks</span>
+              </div>
+            </div>
+            <p class="lr-stats-sub">Daily Flashcard, PhrasePump & YouTube vocabulary review streak</p>
+            <div id="lr-heatmap-grid" class="lr-heatmap-grid"></div>
+          </div>
+        </div>
+
+        <!-- Bottom: 3-Stage Retention Pipeline -->
+        <div class="lr-pipeline-section">
+          <div class="lr-pipeline-sources">
+            <div class="lr-pipe-box">
+              <div class="lr-pipe-head">
+                <span class="dot orange"></span>
+                <h3>Marked to Learn (<span id="pipe-marked-count">0</span>)</h3>
+              </div>
+              <p>Single words, phrasal verbs & idioms saved while watching YouTube.</p>
+            </div>
+            <div class="lr-pipe-box">
+              <div class="lr-pipe-head">
+                <span class="dot amber"></span>
+                <h3>Local CEFR Suggestions (<span id="pipe-suggested-count">12</span>)</h3>
+              </div>
+              <p>High-value words & collocations matched to your local vocabulary rank.</p>
+            </div>
+          </div>
+
+          <div class="lr-pipe-arrow">↓ ⚡ Spaced Repetition (Boxes 2–4) ↓</div>
+
+          <div class="lr-pipe-box stage-learning">
+            <div class="lr-pipe-head">
+              <span class="dot purple"></span>
+              <h3>Learning Now (<span id="pipe-learning-count">0</span>)</h3>
+            </div>
+            <p>Active words & multi-word expressions in 2d, 4d, and 8d review intervals.</p>
+          </div>
+
+          <div class="lr-pipe-arrow">↓ ✓ Long-Term Mastery ↓</div>
+
+          <div class="lr-pipe-box stage-learned">
+            <div class="lr-pipe-head">
+              <span class="dot green"></span>
+              <h3>Learned & Known (<span id="pipe-learned-count">0</span>)</h3>
+            </div>
+            <p>Mastered items highlighted in emerald across all YouTube subtitles.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 2: SAVED WORDS, PHRASAL VERBS & SENTENCES -->
+      <section class="lr-view" id="view-saved">
+        <div class="lr-saved-top-bar">
+          <div class="lr-saved-subtabs">
+            <button type="button" class="lr-subtab active" data-saved-type="all">All Vocabulary</button>
+            <button type="button" class="lr-subtab" data-saved-type="word">Single Words</button>
+            <button type="button" class="lr-subtab" data-saved-type="phrase">Phrasal Verbs & Idioms</button>
+            <button type="button" class="lr-subtab" data-saved-type="sentence">Saved Sentences</button>
+          </div>
+          <div class="lr-saved-tools">
+            <input type="search" id="saved-search-input" placeholder="Search word, phrasal verb, translation..." />
+            <select id="saved-status-filter">
+              <option value="all">All Statuses</option>
+              <option value="learning">📖 Learning</option>
+              <option value="known">✓ Known</option>
+              <option value="ignored">⊘ Ignored</option>
+            </select>
+            <button type="button" class="lr-btn-purple" id="saved-export-csv-btn">📤 Export CSV</button>
+          </div>
+        </div>
+
+        <div class="lr-table-wrap">
+          <table class="lr-table">
+            <thead>
+              <tr>
+                <th>Status</th>
+                <th>Word / Phrasal Verb</th>
+                <th>Translation (FA)</th>
+                <th>Context Sentence</th>
+                <th>Level</th>
+                <th>Source</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="saved-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- VIEW 3: LISTENING DICTATION & SENTENCE BUILDER -->
+      <section class="lr-view" id="view-drills">
+        <div class="lr-drills-container">
+          <h2>🎙 Listening Dictation & Phrasal Verb Sentence Scramble</h2>
+          <p>Assemble scrambled English words & phrasal verbs from audio and Persian translations.</p>
+          <div id="drills-stage-box" class="lr-drills-stage-box"></div>
+        </div>
+      </section>
+
+      <!-- VIEW 4: SETTINGS -->
+      <section class="lr-view" id="view-settings">
+        <div id="portal-settings-container" class="lr-portal-settings"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="../shared/constants.js"></script>
+  <script src="../shared/db.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,996 @@
+/**
+ * Cunt Academy v4.0 — YouTube Content Styles (Language Reactor + Trancy 1:1 Edition)
+ * Features:
+ * - Ultra-clean, borderless/frameless fit-content subtitle box (no intrusive header bar)
+ * - Trancy Word-by-Word Speaker Karaoke Highlighting (.is-spoken / .is-speaking-now)
+ * - Language Reactor Teal Hover Mini-Popup (#1b6b85) with Collocation/Phrasal Verb + Word blocks
+ * - Right-Side Slide-Over Player Dictionary Drawer (matching language_reactor_49466273.mp4 00:23)
+ * - Minimal Corner Controls (< / > on bottom-left, AP switch & ⬍ position nudge on bottom-right)
+ * - Full Subtitle Style Customizer (Font %, Color, Family, Bold, Opacity %, Blur, Shadow/Outline/Raised/Netflix)
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@400;700&family=Noto+Sans:wght@400;600;700&family=Open+Sans:wght@400;600;700&family=Roboto:wght@400;500;700&family=Rubik:wght@400;500;700&family=Vazirmatn:wght@400;500;600;700;800&family=Vollkorn:wght@400;600;700&family=Work+Sans:wght@400;600;700&display=swap');
+
+/* 1. Smart YouTube Playback Bar Auto-Hide */
+#movie_player.lt-hide-yt-playbar:not(.lt-playbar-hover-zone) .ytp-chrome-bottom,
+#movie_player.lt-hide-yt-playbar:not(.lt-playbar-hover-zone) .ytp-gradient-bottom {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(10px) !important;
+  transition: opacity 0.18s ease, transform 0.18s ease !important;
+}
+
+#movie_player.lt-hide-yt-playbar.lt-playbar-hover-zone .ytp-chrome-bottom,
+#movie_player.lt-hide-yt-playbar.lt-playbar-hover-zone .ytp-gradient-bottom {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateY(0) !important;
+  transition: opacity 0.15s ease, transform 0.15s ease !important;
+}
+
+/* Hide YouTube's default caption container visually when Cunt Academy is active */
+#movie_player.lt-hide-native-cc .ytp-caption-window-container {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.lt-hidden {
+  display: none !important;
+}
+
+/* 2. Native [CA ON ⚙ 🎨] Pill inside YouTube's `.ytp-right-controls` */
+.lt-ytp-control-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px;
+  margin-right: 8px;
+  border-radius: 999px;
+  background: rgba(15, 17, 26, 0.88);
+  border: 1px solid rgba(124, 92, 252, 0.48);
+  vertical-align: middle;
+  z-index: 70;
+}
+
+.lt-ytp-lr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 0;
+}
+
+.lt-ytp-lr-circle {
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c5cfc, #10b981);
+  color: #fff;
+  font-weight: 800;
+  font-size: 9.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: -0.02em;
+}
+
+.lt-ytp-switch {
+  width: 26px;
+  height: 14px;
+  border-radius: 999px;
+  background: #3f3f46;
+  position: relative;
+  display: inline-block;
+  transition: background 0.18s ease;
+}
+
+.lt-ytp-switch.is-on {
+  background: #10b981;
+}
+
+.lt-ytp-switch-knob {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.18s ease;
+}
+
+.lt-ytp-switch.is-on .lt-ytp-switch-knob {
+  transform: translateX(12px);
+}
+
+.lt-ytp-icon-btn {
+  background: transparent;
+  border: none;
+  color: #e4e4e7;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.lt-ytp-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+/* 3. Player Overlay Root & Ultra-Clean Language Reactor / Trancy Subtitle Box */
+.lt-player-overlay-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  overflow: hidden;
+  font-family: 'Inter', 'Vazirmatn', system-ui, -apple-system, sans-serif;
+}
+
+.lt-subtitle-box {
+  position: absolute;
+  left: 50%;
+  bottom: 62px;
+  transform: translateX(-50%);
+  width: fit-content;
+  max-width: 84%;
+  pointer-events: auto;
+  background: rgba(8, 8, 10, 0.75);
+  border-radius: 6px;
+  padding: 6px 14px;
+  transition: opacity 0.12s ease;
+  user-select: none;
+}
+
+.lt-subtitle-box.is-empty {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.lt-subtitle-box.is-dragging {
+  outline: 1.5px dashed rgba(124, 92, 252, 0.8);
+  cursor: grabbing;
+}
+
+/* Subtle drag handle & range helper only visible when hovering the subtitle box */
+.lt-sub-hover-grip {
+  position: absolute;
+  left: -24px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 28px;
+  border-radius: 4px;
+  background: rgba(15, 17, 24, 0.78);
+  color: #a1a1aa;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.lt-subtitle-box:hover .lt-sub-hover-grip {
+  opacity: 1;
+}
+
+.lt-sub-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 3px;
+}
+
+.lt-sub-lines.is-translation-first {
+  flex-direction: column-reverse;
+}
+
+.lt-sub-primary {
+  color: #ffffff;
+  font-weight: 500;
+  line-height: 1.38;
+  letter-spacing: 0.01em;
+}
+
+/* Trancy 5 Text Effect Styles: shadow | outline | raised | netflix | none */
+.lt-text-style-shadow {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 2px 6px rgba(0, 0, 0, 0.65);
+}
+
+.lt-text-style-outline {
+  text-shadow:
+    -1px -1px 0 #000,
+     1px -1px 0 #000,
+    -1px  1px 0 #000,
+     1px  1px 0 #000,
+     0px  2px 3px rgba(0, 0, 0, 0.85);
+}
+
+.lt-text-style-raised {
+  text-shadow: 0 1px 0 #000, 0 2px 0 #18181b, 0 3px 5px rgba(0, 0, 0, 0.85);
+}
+
+.lt-text-style-netflix {
+  text-shadow: 0 0 7px rgba(0, 0, 0, 0.95), 0 3px 10px rgba(0, 0, 0, 0.95), 0 1px 2px #000;
+}
+
+.lt-text-style-none {
+  text-shadow: none;
+}
+
+/* Word tokens & Trancy Word-by-Word Speaker Karaoke Lighting */
+.lt-sub-word {
+  display: inline-block;
+  padding: 0 3px;
+  margin: 0 0.5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.12s ease, color 0.12s ease, background-color 0.12s ease, transform 0.08s ease;
+}
+
+.lt-sub-primary.lt-karaoke-active .lt-sub-word {
+  opacity: 0.48;
+}
+
+.lt-sub-primary.lt-karaoke-active .lt-sub-word.is-spoken {
+  opacity: 1;
+}
+
+.lt-sub-primary.lt-karaoke-active .lt-sub-word.is-speaking-now {
+  opacity: 1;
+  text-decoration: underline;
+  text-decoration-color: rgba(124, 92, 252, 0.85);
+  text-underline-offset: 4px;
+}
+
+.lt-sub-word:hover,
+.lt-sub-word.is-hovered-collocation {
+  background-color: rgba(255, 255, 255, 0.16);
+  opacity: 1 !important;
+}
+
+.lt-sub-word.is-multi-selected {
+  background-color: rgba(124, 92, 252, 0.45) !important;
+  box-shadow: 0 0 0 1px #7c5cfc;
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.lt-word-inline-tag {
+  font-size: 9px;
+  font-family: monospace;
+  color: #a1a1aa;
+  vertical-align: super;
+  margin-left: 2px;
+}
+
+.lt-sub-translation {
+  font-family: 'Vazirmatn', system-ui, -apple-system, sans-serif;
+  direction: rtl;
+  unicode-bidi: plaintext;
+  color: #fde047;
+  font-weight: 500;
+  line-height: 1.42;
+  transition: filter 0.18s ease;
+}
+
+.lt-sub-translation.is-blurred {
+  filter: blur(7px);
+  opacity: 0.7;
+}
+
+/* 4. Language Reactor Teal Hover Mini-Popup (#0b5772 / #1b6b85 — video 1 00:10-00:17, 00:55, 01:59) */
+.lt-hover-mini-tooltip {
+  position: absolute;
+  transform: translateX(-50%);
+  background: #1b6b85;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 7px;
+  padding: 6px 10px;
+  min-width: 96px;
+  max-width: 260px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65);
+  color: #ffffff;
+  text-align: center;
+  pointer-events: auto;
+  z-index: 82;
+}
+
+.lt-hover-phrase-box {
+  background: #134e63;
+  border-radius: 5px;
+  padding: 4px 8px;
+  margin-bottom: 5px;
+}
+
+.lt-hover-phrase-en {
+  font-size: 11px;
+  color: #bae6fd;
+  font-weight: 600;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.lt-hover-save-phrase-btn {
+  background: rgba(16, 185, 129, 0.28);
+  border: 1px solid rgba(16, 185, 129, 0.6);
+  color: #ecfdf5;
+  border-radius: 4px;
+  font-size: 10px;
+  padding: 0 5px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.lt-hover-save-phrase-btn:hover {
+  background: #10b981;
+  color: #090d16;
+}
+
+.lt-hover-phrase-fa {
+  font-family: 'Vazirmatn', system-ui, sans-serif;
+  direction: rtl;
+  unicode-bidi: plaintext;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.35;
+}
+
+.lt-hover-word-en {
+  font-size: 11px;
+  color: #cbd5e1;
+  margin-bottom: 2px;
+}
+
+.lt-hover-word-meanings {
+  font-family: 'Vazirmatn', system-ui, sans-serif;
+  direction: rtl;
+  unicode-bidi: plaintext;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.lt-hover-word-meaning-line {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.32;
+}
+
+/* 5. Minimal Corner Controls (< / > on Bottom-Left, AP & ⬍ on Bottom-Right — video 1 00:10) */
+.lt-left-corner-controls {
+  position: absolute;
+  left: 12px;
+  bottom: 62px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  pointer-events: auto;
+}
+
+.lt-corner-controls {
+  position: absolute;
+  right: 12px;
+  bottom: 62px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.lt-corner-pill {
+  min-width: 28px;
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: rgba(14, 15, 20, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #d4d4d8;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.lt-corner-pill:hover {
+  background: rgba(30, 32, 44, 0.92);
+  color: #ffffff;
+}
+
+.lt-corner-pill.is-active {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+/* 6. Right-Side Slide-Over Player Dictionary Drawer (matching video 1 00:23 & 01:03) */
+.lt-floating-dict {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 340px;
+  max-width: 90%;
+  background: rgba(20, 21, 26, 0.97);
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: -12px 0 36px rgba(0, 0, 0, 0.75);
+  pointer-events: auto;
+  z-index: 88;
+  display: flex;
+  flex-direction: column;
+  color: #f4f4f5;
+  font-size: 13px;
+}
+
+.lt-dict-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.lt-dict-top-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #111217;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lt-dict-tab-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  border-bottom: 2px solid #7c5cfc;
+  padding-bottom: 4px;
+}
+
+.lt-dict-close {
+  background: transparent;
+  border: none;
+  color: #a1a1aa;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 2px 6px;
+}
+
+.lt-dict-close:hover {
+  color: #ffffff;
+}
+
+.lt-dict-header {
+  background: #181920;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.lt-dict-word-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.lt-dict-word {
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.lt-dict-audio-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lt-dict-primary-fa {
+  font-family: 'Vazirmatn', system-ui, sans-serif;
+  direction: rtl;
+  unicode-bidi: plaintext;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e4e4e7;
+}
+
+/* Status dots + Multi-Word Phrase Expander Bar */
+.lt-dict-status-strip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px;
+  background: #14151b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.lt-status-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d4d4d8;
+  border-radius: 5px;
+  padding: 3px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lt-status-btn.is-known.active {
+  background: rgba(60, 214, 112, 0.25);
+  border-color: #3cd670;
+  color: #3cd670;
+}
+
+.lt-status-btn.is-learning.active {
+  background: rgba(255, 152, 0, 0.25);
+  border-color: #ff9800;
+  color: #ff9800;
+}
+
+.lt-status-btn.is-ignored.active {
+  background: rgba(179, 136, 255, 0.25);
+  border-color: #b388ff;
+  color: #b388ff;
+}
+
+.lt-dict-cefr-badge {
+  margin-left: auto;
+  font-size: 11px;
+  color: #9ca3af;
+  font-family: monospace;
+}
+
+.lt-phrase-expander-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(124, 92, 252, 0.12);
+  border-bottom: 1px solid rgba(124, 92, 252, 0.25);
+  font-size: 11px;
+}
+
+.lt-phrase-exp-btn {
+  background: rgba(124, 92, 252, 0.25);
+  border: 1px solid rgba(124, 92, 252, 0.45);
+  color: #ddd6fe;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.lt-phrase-exp-btn:hover {
+  background: #7c5cfc;
+  color: #fff;
+}
+
+.lt-dict-body {
+  padding: 10px 12px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.lt-dict-pos-block {
+  margin-bottom: 8px;
+}
+
+.lt-dict-pos-tag {
+  font-size: 11px;
+  color: #4ade80;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.lt-dict-pos-terms {
+  font-family: 'Vazirmatn', system-ui, sans-serif;
+  direction: rtl;
+  unicode-bidi: plaintext;
+  font-size: 13px;
+  color: #f4f4f5;
+  display: block;
+  line-height: 1.45;
+}
+
+.lt-dict-grammar-box {
+  font-family: 'Vazirmatn', system-ui, sans-serif;
+  margin: 8px 0;
+  padding: 7px 9px;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  color: #d1fae5;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.lt-ext-dict-list {
+  display: flex;
+  gap: 6px;
+  margin: 8px 0 10px;
+}
+
+.lt-ext-dict-pill {
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #27272a;
+  color: #a1a1aa;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.lt-ext-dict-pill:hover {
+  color: #ffffff;
+  background: #3f3f46;
+}
+
+.lt-dict-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  margin: 10px 0 5px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lt-dict-example-item {
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.lt-dict-ex-en {
+  color: #e4e4e7;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.lt-dict-ex-fa {
+  font-family: 'Vazirmatn', system-ui, sans-serif;
+  color: #a1a1aa;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+/* 7. Trancy-Style Subtitle Customization Panel & Language Reactor Settings Modal */
+.lt-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.68);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  font-family: 'Inter', 'Vazirmatn', system-ui, sans-serif;
+}
+
+.lt-modal-card {
+  background: #181920;
+  color: #f4f4f5;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  width: 780px;
+  max-width: 95vw;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.88);
+}
+
+.lt-modal-header,
+.lt-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: #121318;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lt-settings-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  overflow-y: auto;
+  max-height: 75vh;
+}
+
+.lt-settings-sidebar {
+  background: #14151b;
+  padding: 16px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+}
+
+.lt-shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  color: #cbd5e1;
+}
+
+.lt-kbd {
+  background: #27272a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: monospace;
+  font-size: 11px;
+  color: #fff;
+}
+
+.lt-settings-main {
+  padding: 18px 22px;
+  overflow-y: auto;
+}
+
+.lt-settings-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #a855f7;
+  margin: 16px 0 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lt-settings-section-title:first-child {
+  margin-top: 0;
+}
+
+.lt-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.lt-field-row select,
+.lt-field-row input[type="range"] {
+  background: #27272a;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.lt-stepper-group {
+  display: inline-flex;
+  align-items: center;
+  background: #27272a;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.lt-stepper-btn {
+  background: transparent;
+  border: none;
+  color: #e4e4e7;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.lt-stepper-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.lt-stepper-val {
+  padding: 0 8px;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.lt-color-pickers-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.lt-color-pickers-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.lt-example-preview-box {
+  background: #101116;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+/* 8. Right-Side 3-Tab Subtitles / Words / Saved Dock */
+.lt-right-dock {
+  background: #12131a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  color: #f4f4f5;
+  font-family: 'Inter', 'Vazirmatn', system-ui, sans-serif;
+}
+
+.lt-dock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  background: #181a24;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lt-dock-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.lt-dock-tab {
+  background: transparent;
+  border: none;
+  color: #a1a1aa;
+  padding: 5px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lt-dock-tab.active {
+  background: rgba(124, 92, 252, 0.24);
+  color: #ddd6fe;
+}
+
+.lt-dock-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.lt-dock-icon-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e4e4e7;
+  border-radius: 6px;
+  padding: 3px 7px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.lt-dock-body {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.lt-dock-cue-row {
+  display: flex;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.lt-dock-cue-row.is-active {
+  background: rgba(124, 92, 252, 0.16);
+}
+
+.lt-cue-play-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: none;
+  color: #a1a1aa;
+  border-radius: 5px;
+  padding: 2px 6px;
+  font-size: 11px;
+  height: fit-content;
+  cursor: pointer;
+}
+
+.lt-cue-en {
+  font-size: 13px;
+  color: #f4f4f5;
+}
+
+.lt-cue-fa {
+  font-family: 'Vazirmatn', system-ui, sans-serif;
+  font-size: 12px;
+  color: #fde047;
+  margin-top: 2px;
+}
+
+.lt-words-filter-bar,
+.lt-saved-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lt-wf-btn,
+.lt-open-portal-btn {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d4d4d8;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.lt-wf-btn.active,
+.lt-open-portal-btn {
+  background: #7c5cfc;
+  color: #fff;
+  border-color: #8b5cf6;
+}
+
+.lt-dock-word-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+}
+
+.lt-dock-word-row:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.lt-word-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #71717a;
+}
+
+.lt-word-dot.lt-cat-known { background: #3cd670; }
+.lt-word-dot.lt-cat-suggested { background: #ff9800; }
+.lt-word-dot.lt-cat-learning { background: #ff9800; }
+.lt-word-dot.lt-cat-ignored { background: #b388ff; }
+
+.lt-word-meta,
+.lt-word-count,
+.lt-word-fa {
+  margin-left: auto;
+  font-size: 12px;
+  color: #a1a1aa;
+}

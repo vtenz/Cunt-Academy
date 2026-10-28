@@ -1,0 +1,377 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account profile and synchronized Cunt Academy learning preferences (non-PII).",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the account owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of the learner.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Avatar URL from Google profile.",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "vocabLevel": {
+          "type": "number",
+          "description": "Target corpus vocabulary rank threshold."
+        },
+        "wordColorPreset": {
+          "type": "string",
+          "description": "Selected word color highlighting preset.",
+          "enum": ["default-lr", "kevin-hunting", "custom"],
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "lrEnabled": {
+          "type": "boolean",
+          "description": "Whether dual-subtitle overlay is enabled."
+        },
+        "wordByWordHighlight": {
+          "type": "boolean",
+          "description": "Whether Trancy-style word-by-word karaoke is active."
+        },
+        "hoverPauseAtCueEnd": {
+          "type": "boolean",
+          "description": "Whether hovering a word pauses at the end of the current cue."
+        },
+        "autoPauseAfterCue": {
+          "type": "boolean",
+          "description": "Whether playback auto-pauses after every subtitle line."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the profile was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the profile was last updated."
+        }
+      },
+      "required": [
+        "ownerId",
+        "displayName",
+        "photoURL",
+        "vocabLevel",
+        "wordColorPreset",
+        "lrEnabled",
+        "wordByWordHighlight",
+        "hoverPauseAtCueEnd",
+        "autoPauseAfterCue",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "FlashcardDoc": {
+      "title": "FlashcardDoc",
+      "description": "AnkiDroid SM-2 spaced repetition flashcard synchronized across web and browser extensions.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Deterministic card ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the card owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "word": {
+          "type": "string",
+          "description": "Headword or multi-word phrase.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "lemma": {
+          "type": "string",
+          "description": "Base morphological lemma.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "isPhrase": {
+          "type": "boolean",
+          "description": "True if card is a multi-word idiom or phrasal verb."
+        },
+        "status": {
+          "type": "string",
+          "description": "Learning status of the item.",
+          "enum": ["learning", "known", "ignored"],
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "pumpStage": {
+          "type": "string",
+          "description": "PhrasePump pipeline stage.",
+          "enum": ["marked", "learning_now", "learned", "ignored"],
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "ankiState": {
+          "type": "string",
+          "description": "AnkiDroid SM-2 state.",
+          "enum": ["new", "learning", "review", "relearning"],
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "intervalDays": {
+          "type": "number",
+          "description": "Current SM-2 interval in days."
+        },
+        "learningStep": {
+          "type": "number",
+          "description": "Current intraday learning step index."
+        },
+        "customNotesFa": {
+          "type": "string",
+          "description": "User-editable back-of-card note in Persian or English.",
+          "minLength": 0,
+          "maxLength": 1000
+        },
+        "cefr": {
+          "type": "string",
+          "description": "CEFR difficulty level.",
+          "minLength": 1,
+          "maxLength": 10
+        },
+        "freqTag": {
+          "type": "string",
+          "description": "Frequency band tag.",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "rank": {
+          "type": "number",
+          "description": "Corpus frequency rank."
+        },
+        "phonetic": {
+          "type": "string",
+          "description": "IPA phonetic transcription.",
+          "minLength": 0,
+          "maxLength": 120
+        },
+        "translationFa": {
+          "type": "string",
+          "description": "Primary Persian translation on the back of the card.",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "miniMeaningsFa": {
+          "type": "array",
+          "description": "List of multi-POS Persian meanings.",
+          "maxLength": 12
+        },
+        "aiExplanationFa": {
+          "type": "string",
+          "description": "Lexa AI contextual explanation.",
+          "minLength": 0,
+          "maxLength": 2000
+        },
+        "englishDefinition": {
+          "type": "string",
+          "description": "English dictionary definition.",
+          "minLength": 0,
+          "maxLength": 1000
+        },
+        "contextSentenceEn": {
+          "type": "string",
+          "description": "English context subtitle line where the word was captured.",
+          "minLength": 0,
+          "maxLength": 1000
+        },
+        "contextSentenceFa": {
+          "type": "string",
+          "description": "Persian translation of the context subtitle line.",
+          "minLength": 0,
+          "maxLength": 1000
+        },
+        "videoId": {
+          "type": "string",
+          "description": "YouTube video ID.",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "videoTitle": {
+          "type": "string",
+          "description": "YouTube video title.",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "videoTimestampSec": {
+          "type": "number",
+          "description": "Timestamp in seconds within the video."
+        },
+        "box": {
+          "type": "number",
+          "description": "Leitner box index (1 to 6)."
+        },
+        "nextReviewAt": {
+          "type": "number",
+          "description": "Epoch milliseconds when the card is next due."
+        },
+        "lastReviewedAt": {
+          "type": "number",
+          "description": "Epoch milliseconds when the card was last graded."
+        },
+        "reviewCount": {
+          "type": "number",
+          "description": "Total number of reviews."
+        },
+        "lapseCount": {
+          "type": "number",
+          "description": "Total number of lapses (Again presses)."
+        },
+        "easeFactor": {
+          "type": "number",
+          "description": "SM-2 ease factor (minimum 1.3)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when card was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when card was last updated."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "word",
+        "lemma",
+        "isPhrase",
+        "status",
+        "pumpStage",
+        "ankiState",
+        "intervalDays",
+        "learningStep",
+        "customNotesFa",
+        "cefr",
+        "freqTag",
+        "rank",
+        "phonetic",
+        "translationFa",
+        "miniMeaningsFa",
+        "aiExplanationFa",
+        "englishDefinition",
+        "contextSentenceEn",
+        "contextSentenceFa",
+        "videoId",
+        "videoTitle",
+        "videoTimestampSec",
+        "box",
+        "nextReviewAt",
+        "lastReviewedAt",
+        "reviewCount",
+        "lapseCount",
+        "easeFactor",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SavedSentenceDoc": {
+      "title": "SavedSentenceDoc",
+      "description": "Saved dual-subtitle sentence item for shadowing and context review.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Sentence document ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "sentenceEn": {
+          "type": "string",
+          "description": "English subtitle sentence.",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "sentenceFa": {
+          "type": "string",
+          "description": "Persian subtitle translation.",
+          "minLength": 0,
+          "maxLength": 1000
+        },
+        "videoId": {
+          "type": "string",
+          "description": "YouTube video ID.",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "videoTitle": {
+          "type": "string",
+          "description": "YouTube video title.",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "timestampSec": {
+          "type": "number",
+          "description": "Timestamp in seconds within the video."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when sentence was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when sentence was updated."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "sentenceEn",
+        "sentenceFa",
+        "videoId",
+        "videoTitle",
+        "timestampSec",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/userProfiles/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Per-user profile and learning settings keyed by Firebase Auth UID."
+    },
+    "/userProfiles/{userId}/cards/{cardId}": {
+      "schema": { "$ref": "#/entities/FlashcardDoc" },
+      "description": "Subcollection of AnkiDroid SM-2 flashcards owned by userId."
+    },
+    "/userProfiles/{userId}/sentences/{sentenceId}": {
+      "schema": { "$ref": "#/entities/SavedSentenceDoc" },
+      "description": "Subcollection of saved subtitle sentences owned by userId."
+    }
+  }
+}

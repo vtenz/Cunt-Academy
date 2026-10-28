@@ -1,0 +1,448 @@
+/**
+ * Cunt Academy v4.0 — Trancy-Aesthetic Portal Styles (`dashboard.css`)
+ */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: radial-gradient(circle at 18% 0%, rgba(124, 92, 252, 0.14), transparent 42%), #0B0D14;
+  color: #F8FAFC;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-height: 100vh;
+}
+
+.lr-app-shell {
+  display: grid;
+  grid-template-columns: 256px 1fr;
+  min-height: 100vh;
+}
+
+.lr-sidebar {
+  background: rgba(18, 21, 33, 0.94);
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 22px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  backdrop-filter: blur(16px);
+}
+
+.lr-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lr-logo-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #7C5CFC, #10B981);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 15px;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(124, 92, 252, 0.35);
+}
+
+.lr-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.lr-brand-top {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #A78BFA;
+}
+
+.lr-brand-bottom {
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  color: #fff;
+}
+
+.lr-lang-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+}
+
+.lr-lang-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #10B981;
+  color: #052e16;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+.lr-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lr-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94A3B8;
+  padding: 11px 13px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.lr-nav-item.active,
+.lr-nav-item:hover {
+  background: rgba(124, 92, 252, 0.18);
+  border-color: rgba(124, 92, 252, 0.4);
+  color: #fff;
+}
+
+.lr-sidebar-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.lr-action-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #E2E8F0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.lr-action-btn:hover {
+  background: rgba(124, 92, 252, 0.22);
+  border-color: #7C5CFC;
+}
+
+.lr-main {
+  padding: 28px 36px;
+  overflow-y: auto;
+}
+
+.lr-view {
+  display: none;
+}
+
+.lr-view.active {
+  display: block;
+}
+
+.lr-pump-top-grid {
+  display: grid;
+  grid-template-columns: 1.45fr 0.95fr;
+  gap: 22px;
+  margin-bottom: 28px;
+}
+
+.lr-pump-hero-card {
+  background: #121521;
+  border: 1px solid rgba(124, 92, 252, 0.45);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(124, 92, 252, 0.15);
+}
+
+.lr-pump-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.lr-pump-title-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.lr-pump-fan-icon {
+  font-size: 28px;
+}
+
+.lr-mode-switcher {
+  display: flex;
+  gap: 6px;
+  background: #0B0D14;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.lr-mode-btn {
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  padding: 7px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lr-mode-btn.active {
+  background: #7C5CFC;
+  color: #fff;
+}
+
+.lr-pump-stats-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.lr-pump-stat-box {
+  background: #0B0D14;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.lr-pump-stat-box .label {
+  display: block;
+  font-size: 11.5px;
+  color: #94A3B8;
+  margin-bottom: 4px;
+}
+
+.lr-pump-stat-box strong {
+  font-size: 20px;
+  color: #fff;
+}
+
+.lr-pump-stat-box.urgent strong {
+  color: #F59E0B;
+}
+
+.lr-pump-session-area {
+  background: #0B0D14;
+  border-radius: 14px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Trancy Manual-Flip Flashcard */
+.ca-flashcard-surface {
+  background: linear-gradient(145deg, #161A2B 0%, #101320 100%);
+  border: 1px solid rgba(124, 92, 252, 0.35);
+  border-radius: 14px;
+  padding: 26px 22px;
+  min-height: 210px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.ca-flashcard-surface:hover {
+  border-color: #7C5CFC;
+  transform: translateY(-2px);
+}
+
+.lr-btn-purple {
+  background: linear-gradient(135deg, #7C5CFC, #6366F1);
+  border: none;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 9px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.lr-btn-purple:hover {
+  filter: brightness(1.1);
+}
+
+.lr-stats-card {
+  background: #121521;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 22px;
+}
+
+.lr-stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.lr-stats-sub {
+  font-size: 12px;
+  color: #94A3B8;
+  margin-bottom: 16px;
+}
+
+.lr-heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 5px;
+}
+
+.lr-heat-cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: #1E2235;
+}
+
+.lr-heat-cell.lv-1 { background: #312E81; }
+.lr-heat-cell.lv-2 { background: #6366F1; }
+.lr-heat-cell.lv-3 { background: #10B981; }
+
+.lr-pipeline-section {
+  max-width: 780px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.lr-pipeline-sources {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+}
+
+.lr-pipe-box {
+  background: #121521;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px 20px;
+  width: 100%;
+}
+
+.lr-pipe-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot.orange { background: #F97316; }
+.dot.amber { background: #F59E0B; }
+.dot.purple { background: #7C5CFC; }
+.dot.green { background: #10B981; }
+
+.lr-pipe-arrow {
+  color: #A78BFA;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+/* Saved Items View */
+.lr-saved-top-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.lr-saved-subtabs {
+  display: flex;
+  gap: 6px;
+}
+
+.lr-subtab {
+  background: #121521;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94A3B8;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.lr-subtab.active {
+  background: #7C5CFC;
+  color: #fff;
+  border-color: #8B5CF6;
+}
+
+.lr-saved-tools {
+  display: flex;
+  gap: 10px;
+}
+
+.lr-saved-tools input,
+.lr-saved-tools select {
+  background: #121521;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.lr-table-wrap {
+  background: #121521;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.lr-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.lr-table th,
+.lr-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: left;
+  font-size: 13px;
+}
+
+.lr-table th {
+  background: #0B0D14;
+  color: #94A3B8;
+  font-weight: 600;
+}

@@ -1,0 +1,480 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default-Deny Catch-All)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Hardened Global Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerified() && request.auth.uid == userId;
+    }
+
+    function isParentProfileOwner(userId) {
+      return exists(/databases/$(database)/documents/userProfiles/$(userId)) &&
+        get(/databases/$(database)/documents/userProfiles/$(userId)).data.ownerId == request.auth.uid;
+    }
+
+    // 3. Entity Validation Blueprints (Anti-Update-Gap)
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+          'ownerId',
+          'displayName',
+          'photoURL',
+          'vocabLevel',
+          'wordColorPreset',
+          'lrEnabled',
+          'wordByWordHighlight',
+          'hoverPauseAtCueEnd',
+          'autoPauseAfterCue',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerId',
+          'displayName',
+          'photoURL',
+          'vocabLevel',
+          'wordColorPreset',
+          'lrEnabled',
+          'wordByWordHighlight',
+          'hoverPauseAtCueEnd',
+          'autoPauseAfterCue',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.ownerId is string &&
+        data.ownerId.size() >= 1 &&
+        data.ownerId.size() <= 128 &&
+        data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerId == request.auth.uid &&
+        data.ownerId == userId &&
+        data.displayName is string &&
+        data.displayName.size() >= 1 &&
+        data.displayName.size() <= 100 &&
+        data.photoURL is string &&
+        data.photoURL.size() >= 0 &&
+        data.photoURL.size() <= 500 &&
+        data.vocabLevel is number &&
+        data.vocabLevel >= 100 &&
+        data.vocabLevel <= 50000 &&
+        data.wordColorPreset is string &&
+        data.wordColorPreset.size() >= 1 &&
+        data.wordColorPreset.size() <= 32 &&
+        (data.wordColorPreset == 'default-lr' || data.wordColorPreset == 'kevin-hunting' || data.wordColorPreset == 'custom') &&
+        data.lrEnabled is bool &&
+        data.wordByWordHighlight is bool &&
+        data.hoverPauseAtCueEnd is bool &&
+        data.autoPauseAfterCue is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidFlashcardDoc(data, userId, cardId) {
+      return data.keys().hasAll([
+          'id',
+          'ownerId',
+          'word',
+          'lemma',
+          'isPhrase',
+          'status',
+          'pumpStage',
+          'ankiState',
+          'intervalDays',
+          'learningStep',
+          'customNotesFa',
+          'cefr',
+          'freqTag',
+          'rank',
+          'phonetic',
+          'translationFa',
+          'miniMeaningsFa',
+          'aiExplanationFa',
+          'englishDefinition',
+          'contextSentenceEn',
+          'contextSentenceFa',
+          'videoId',
+          'videoTitle',
+          'videoTimestampSec',
+          'box',
+          'nextReviewAt',
+          'lastReviewedAt',
+          'reviewCount',
+          'lapseCount',
+          'easeFactor',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'ownerId',
+          'word',
+          'lemma',
+          'isPhrase',
+          'status',
+          'pumpStage',
+          'ankiState',
+          'intervalDays',
+          'learningStep',
+          'customNotesFa',
+          'cefr',
+          'freqTag',
+          'rank',
+          'phonetic',
+          'translationFa',
+          'miniMeaningsFa',
+          'aiExplanationFa',
+          'englishDefinition',
+          'contextSentenceEn',
+          'contextSentenceFa',
+          'videoId',
+          'videoTitle',
+          'videoTimestampSec',
+          'box',
+          'nextReviewAt',
+          'lastReviewedAt',
+          'reviewCount',
+          'lapseCount',
+          'easeFactor',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.id is string &&
+        data.id.size() >= 1 &&
+        data.id.size() <= 128 &&
+        data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.id == cardId &&
+        data.ownerId is string &&
+        data.ownerId.size() >= 1 &&
+        data.ownerId.size() <= 128 &&
+        data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerId == request.auth.uid &&
+        data.ownerId == userId &&
+        data.word is string &&
+        data.word.size() >= 1 &&
+        data.word.size() <= 120 &&
+        data.lemma is string &&
+        data.lemma.size() >= 1 &&
+        data.lemma.size() <= 120 &&
+        data.isPhrase is bool &&
+        data.status is string &&
+        data.status.size() >= 1 &&
+        data.status.size() <= 20 &&
+        (data.status == 'learning' || data.status == 'known' || data.status == 'ignored') &&
+        data.pumpStage is string &&
+        data.pumpStage.size() >= 1 &&
+        data.pumpStage.size() <= 20 &&
+        (data.pumpStage == 'marked' || data.pumpStage == 'learning_now' || data.pumpStage == 'learned' || data.pumpStage == 'ignored') &&
+        data.ankiState is string &&
+        data.ankiState.size() >= 1 &&
+        data.ankiState.size() <= 20 &&
+        (data.ankiState == 'new' || data.ankiState == 'learning' || data.ankiState == 'review' || data.ankiState == 'relearning') &&
+        data.intervalDays is number &&
+        data.intervalDays >= 0 &&
+        data.intervalDays <= 36500 &&
+        data.learningStep is number &&
+        data.learningStep >= 0 &&
+        data.learningStep <= 20 &&
+        data.customNotesFa is string &&
+        data.customNotesFa.size() >= 0 &&
+        data.customNotesFa.size() <= 1000 &&
+        data.cefr is string &&
+        data.cefr.size() >= 1 &&
+        data.cefr.size() <= 10 &&
+        data.freqTag is string &&
+        data.freqTag.size() >= 1 &&
+        data.freqTag.size() <= 32 &&
+        data.rank is number &&
+        data.rank >= 0 &&
+        data.rank <= 100000 &&
+        data.phonetic is string &&
+        data.phonetic.size() >= 0 &&
+        data.phonetic.size() <= 120 &&
+        data.translationFa is string &&
+        data.translationFa.size() >= 1 &&
+        data.translationFa.size() <= 500 &&
+        data.miniMeaningsFa is list &&
+        data.miniMeaningsFa.size() <= 12 &&
+        (data.miniMeaningsFa.size() == 0 || (data.miniMeaningsFa[0] is string && data.miniMeaningsFa[0].size() <= 200)) &&
+        data.aiExplanationFa is string &&
+        data.aiExplanationFa.size() >= 0 &&
+        data.aiExplanationFa.size() <= 2000 &&
+        data.englishDefinition is string &&
+        data.englishDefinition.size() >= 0 &&
+        data.englishDefinition.size() <= 1000 &&
+        data.contextSentenceEn is string &&
+        data.contextSentenceEn.size() >= 0 &&
+        data.contextSentenceEn.size() <= 1000 &&
+        data.contextSentenceFa is string &&
+        data.contextSentenceFa.size() >= 0 &&
+        data.contextSentenceFa.size() <= 1000 &&
+        data.videoId is string &&
+        data.videoId.size() >= 1 &&
+        data.videoId.size() <= 64 &&
+        data.videoTitle is string &&
+        data.videoTitle.size() >= 1 &&
+        data.videoTitle.size() <= 300 &&
+        data.videoTimestampSec is number &&
+        data.videoTimestampSec >= 0 &&
+        data.videoTimestampSec <= 864000 &&
+        data.box is number &&
+        data.box >= 1 &&
+        data.box <= 6 &&
+        data.nextReviewAt is number &&
+        data.nextReviewAt >= 0 &&
+        data.lastReviewedAt is number &&
+        data.lastReviewedAt >= 0 &&
+        data.reviewCount is number &&
+        data.reviewCount >= 0 &&
+        data.lapseCount is number &&
+        data.lapseCount >= 0 &&
+        data.easeFactor is number &&
+        data.easeFactor >= 1.3 &&
+        data.easeFactor <= 5.0 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidSavedSentenceDoc(data, userId, sentenceId) {
+      return data.keys().hasAll([
+          'id',
+          'ownerId',
+          'sentenceEn',
+          'sentenceFa',
+          'videoId',
+          'videoTitle',
+          'timestampSec',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id',
+          'ownerId',
+          'sentenceEn',
+          'sentenceFa',
+          'videoId',
+          'videoTitle',
+          'timestampSec',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.id is string &&
+        data.id.size() >= 1 &&
+        data.id.size() <= 128 &&
+        data.id.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.id == sentenceId &&
+        data.ownerId is string &&
+        data.ownerId.size() >= 1 &&
+        data.ownerId.size() <= 128 &&
+        data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.ownerId == request.auth.uid &&
+        data.ownerId == userId &&
+        data.sentenceEn is string &&
+        data.sentenceEn.size() >= 1 &&
+        data.sentenceEn.size() <= 1000 &&
+        data.sentenceFa is string &&
+        data.sentenceFa.size() >= 0 &&
+        data.sentenceFa.size() <= 1000 &&
+        data.videoId is string &&
+        data.videoId.size() >= 1 &&
+        data.videoId.size() <= 64 &&
+        data.videoTitle is string &&
+        data.videoTitle.size() >= 1 &&
+        data.videoTitle.size() <= 300 &&
+        data.timestampSec is number &&
+        data.timestampSec >= 0 &&
+        data.timestampSec <= 864000 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // 4. Collection: /userProfiles/{userId}
+    match /userProfiles/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId) && existing().ownerId == request.auth.uid;
+      allow list: if false;
+
+      allow create: if isOwner(userId) &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isOwner(userId) &&
+        isValidId(userId) &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action: Update Profile & Subtitle Preferences
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'displayName',
+            'photoURL',
+            'vocabLevel',
+            'wordColorPreset',
+            'lrEnabled',
+            'wordByWordHighlight',
+            'hoverPauseAtCueEnd',
+            'autoPauseAfterCue',
+            'updatedAt'
+          ])
+        );
+
+      allow delete: if isOwner(userId) && isValidId(userId) && existing().ownerId == request.auth.uid;
+
+      // Subcollection: /userProfiles/{userId}/cards/{cardId}
+      match /cards/{cardId} {
+        allow get: if isOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(cardId) &&
+          existing().ownerId == request.auth.uid &&
+          isParentProfileOwner(userId);
+
+        allow list: if isOwner(userId) &&
+          existing().ownerId == request.auth.uid;
+
+        allow create: if isOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(cardId) &&
+          isValidFlashcardDoc(incoming(), userId, cardId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isParentProfileOwner(userId);
+
+        allow update: if isOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(cardId) &&
+          isValidFlashcardDoc(incoming(), userId, cardId) &&
+          incoming().id == existing().id &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          (
+            // Action 1: AnkiDroid SM-2 Grade / Status Update
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'status',
+              'pumpStage',
+              'ankiState',
+              'intervalDays',
+              'learningStep',
+              'box',
+              'nextReviewAt',
+              'lastReviewedAt',
+              'reviewCount',
+              'lapseCount',
+              'easeFactor',
+              'updatedAt'
+            ]) ||
+            // Action 2: Back-of-Card Content / Full Card Upsert Sync
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'word',
+              'lemma',
+              'isPhrase',
+              'status',
+              'pumpStage',
+              'ankiState',
+              'intervalDays',
+              'learningStep',
+              'customNotesFa',
+              'cefr',
+              'freqTag',
+              'rank',
+              'phonetic',
+              'translationFa',
+              'miniMeaningsFa',
+              'aiExplanationFa',
+              'englishDefinition',
+              'contextSentenceEn',
+              'contextSentenceFa',
+              'videoId',
+              'videoTitle',
+              'videoTimestampSec',
+              'box',
+              'nextReviewAt',
+              'lastReviewedAt',
+              'reviewCount',
+              'lapseCount',
+              'easeFactor',
+              'updatedAt'
+            ])
+          ) &&
+          isParentProfileOwner(userId);
+
+        allow delete: if isOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(cardId) &&
+          existing().ownerId == request.auth.uid &&
+          isParentProfileOwner(userId);
+      }
+
+      // Subcollection: /userProfiles/{userId}/sentences/{sentenceId}
+      match /sentences/{sentenceId} {
+        allow get: if isOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(sentenceId) &&
+          existing().ownerId == request.auth.uid &&
+          isParentProfileOwner(userId);
+
+        allow list: if isOwner(userId) &&
+          existing().ownerId == request.auth.uid;
+
+        allow create: if isOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(sentenceId) &&
+          isValidSavedSentenceDoc(incoming(), userId, sentenceId) &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          isParentProfileOwner(userId);
+
+        allow update: if isOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(sentenceId) &&
+          isValidSavedSentenceDoc(incoming(), userId, sentenceId) &&
+          incoming().id == existing().id &&
+          incoming().ownerId == existing().ownerId &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          (
+            // Action: Update Sentence Translation or Video Context
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'sentenceEn',
+              'sentenceFa',
+              'videoId',
+              'videoTitle',
+              'timestampSec',
+              'updatedAt'
+            ])
+          ) &&
+          isParentProfileOwner(userId);
+
+        allow delete: if isOwner(userId) &&
+          isValidId(userId) &&
+          isValidId(sentenceId) &&
+          existing().ownerId == request.auth.uid &&
+          isParentProfileOwner(userId);
+      }
+    }
+  }
+}

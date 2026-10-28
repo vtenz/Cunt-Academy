@@ -1,0 +1,73 @@
+{
+  "manifest_version": 2,
+  "name": "Cunt Academy — Language Reactor & Trancy 1:1 Free Edition",
+  "version": "4.6.0",
+  "description": "Cunt Academy v4.6: 100% Free YouTube Language Learning Extension for Zen Browser & Firefox with Gmail Cloud Sync, AnkiDroid SM-2 Flashcards, Editable Back of Card, Instant Multi-POS Dictionary, and Subtitle Sync Guard.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "linguatube-pro@zenbrowser.ext",
+      "strict_min_version": "109.0"
+    }
+  },
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "activeTab",
+    "tabs",
+    "*://*.youtube.com/*",
+    "*://*.googleapis.com/*",
+    "*://translate.googleapis.com/*",
+    "*://api.dictionaryapi.dev/*",
+    "*://api.mymemory.translated.net/*",
+    "*://tatoeba.org/*",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": [
+      "src/shared/constants.js",
+      "src/shared/persian-utils.js",
+      "src/shared/db.js",
+      "src/background/background.js"
+    ],
+    "persistent": true
+  },
+  "browser_action": {
+    "default_title": "Cunt Academy v4.5 — Open AnkiDroid Flashcards, PhrasePump & Saved Portal",
+    "default_icon": {
+      "48": "icons/icon48.png",
+      "96": "icons/icon96.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["src/content/main-world-loader.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "css": ["src/content/content-styles.css"],
+      "js": [
+        "src/shared/constants.js",
+        "src/shared/persian-utils.js",
+        "src/shared/db.js",
+        "src/content/subtitle-parser.js",
+        "src/content/content-main.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    "src/content/page-interceptor.js",
+    "src/dashboard/dashboard.html",
+    "icons/icon48.png",
+    "icons/icon96.png",
+    "icons/icon128.png"
+  ],
+  "icons": {
+    "48": "icons/icon48.png",
+    "96": "icons/icon96.png",
+    "128": "icons/icon128.png"
+  }
+}

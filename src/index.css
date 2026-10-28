@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    font-family: 'Vazirmatn', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    font-family: 'Vazirmatn', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: #090d16;
+    color: #f8fafc;
+    direction: rtl;
+  }
+
+  code,
+  pre,
+  .font-mono {
+    font-family: 'JetBrains Mono', 'Plus Jakarta Sans', 'Vazirmatn', system-ui, monospace;
+  }
+}
+
+.rtl-plaintext {
+  font-family: 'Vazirmatn', 'Plus Jakarta Sans', system-ui, sans-serif;
+  direction: rtl;
+  unicode-bidi: plaintext;
+  text-align: right;
+}
+
+.ltr-plaintext {
+  font-family: 'Plus Jakarta Sans', 'Vazirmatn', system-ui, sans-serif;
+  direction: ltr;
+  unicode-bidi: plaintext;
+  text-align: left;
+}
+
+.phonetic-text {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono', 'Vazirmatn', monospace;
+}
