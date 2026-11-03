@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Cloud,
   LogIn,
@@ -14,42 +14,55 @@ import {
   Mail,
   UserPlus,
   X,
+  Cpu,
 } from 'lucide-react';
 import { User, AppAccountUser, generateExtensionSyncToken } from '../firebase';
+import { LeitnerCard } from '../utils/linguatubeLogic';
+import {
+  GeminiConnectionConfig,
+  loadGeminiConfig,
+  verifyAndConnectGeminiKey,
+  disconnectGeminiConfig,
+} from '../services/geminiService';
 
-export const PUBLIC_SHARED_APP_URL =
-  'https://ais-pre-kpvvaywqip7q5ueoy2ov3t-258196294078.us-east1.run.app';
+export const PUBLIC_SHARED_APP_URL = 'https://cunt-academy.netlify.app/';
 
 interface CloudAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: User | AppAccountUser | null;
+  cards?: LeitnerCard[];
   authLoading: boolean;
   syncStatus: 'idle' | 'syncing' | 'synced' | 'error';
   syncError: string | null;
   cardsCount: number;
   sentencesCount: number;
+  extensionBridgeConnected?: boolean;
   onSignInGoogle: () => Promise<void>;
   onSignInDirectEmail: (email: string, password: string, displayName?: string) => Promise<void>;
   onSignInSyncToken: (token: string) => Promise<void>;
   onSignOutGoogle: () => Promise<void>;
   onForcePushLocalToCloud: () => Promise<void>;
+  onGeminiConfigChange?: (cfg: GeminiConnectionConfig) => void;
 }
 
 export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
   isOpen,
   onClose,
   user,
+  cards = [],
   authLoading,
   syncStatus,
   syncError,
   cardsCount,
   sentencesCount,
+  extensionBridgeConnected = false,
   onSignInGoogle,
   onSignInDirectEmail,
   onSignInSyncToken,
   onSignOutGoogle,
   onForcePushLocalToCloud,
+  onGeminiConfigChange,
 }) => {
   const [copiedDomain, setCopiedDomain] = useState(false);
   const [copiedSyncKey, setCopiedSyncKey] = useState(false);
@@ -58,20 +71,30 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
   const [nameInput, setNameInput] = useState('');
   const [syncTokenInput, setSyncTokenInput] = useState('');
   const [showTokenPaste, setShowTokenPaste] = useState(false);
+  const [tokenSuccessMsg, setTokenSuccessMsg] = useState<string | null>(null);
+
+  // Gemini API Key Connection & Verification State
+  const [geminiCfg, setGeminiCfg] = useState<GeminiConnectionConfig>(() => loadGeminiConfig());
+  const [geminiKeyInput, setGeminiKeyInput] = useState<string>(() => loadGeminiConfig().apiKey);
+  const [geminiVerifying, setGeminiVerifying] = useState<boolean>(false);
+  const [geminiVerifyError, setGeminiVerifyError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      const latest = loadGeminiConfig();
+      setGeminiCfg(latest);
+      setGeminiKeyInput(latest.apiKey);
+      setGeminiVerifyError(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const currentOrigin =
-    typeof window !== 'undefined' &&
-    window.location?.origin &&
-    !window.location.origin.includes('localhost')
-      ? window.location.origin
-      : PUBLIC_SHARED_APP_URL;
-
-  const extensionSyncToken = user ? generateExtensionSyncToken(user) : '';
+  const canonicalDomain = PUBLIC_SHARED_APP_URL;
+  const extensionSyncToken = user ? generateExtensionSyncToken(user, cards) : '';
 
   const handleCopyDomain = () => {
-    navigator.clipboard?.writeText(currentOrigin);
+    navigator.clipboard?.writeText(canonicalDomain);
     setCopiedDomain(true);
     setTimeout(() => setCopiedDomain(false), 2200);
   };
@@ -85,13 +108,39 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
 
   const handleDirectEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSignInDirectEmail(emailInput, passwordInput, nameInput);
+    await onSignInDirectEmail(emailInput, passwordInput || 'cunt_academy_default', nameInput);
   };
 
   const handleSyncTokenSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!syncTokenInput.trim()) return;
     await onSignInSyncToken(syncTokenInput);
     setSyncTokenInput('');
+    setTokenSuccessMsg('✓ اکانت جیمیل و تمام فلش‌کارت‌های کد سینک با موفقیت وارد سایت شدند!');
+    setTimeout(() => setTokenSuccessMsg(null), 4000);
+  };
+
+  const handleVerifyGeminiKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGeminiVerifying(true);
+    setGeminiVerifyError(null);
+    try {
+      const verifiedCfg = await verifyAndConnectGeminiKey(geminiKeyInput);
+      setGeminiCfg(verifiedCfg);
+      onGeminiConfigChange?.(verifiedCfg);
+    } catch (err) {
+      setGeminiVerifyError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setGeminiVerifying(false);
+    }
+  };
+
+  const handleDisconnectGemini = () => {
+    const empty = disconnectGeminiConfig();
+    setGeminiCfg(empty);
+    setGeminiKeyInput('');
+    setGeminiVerifyError(null);
+    onGeminiConfigChange?.(empty);
   };
 
   return (
@@ -112,10 +161,10 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-black duo-text-main">
-                حساب کاربری جیمیل، دامین عمومی و همگام‌سازی ابری
+                ورود با جیمیل، سینک اکستنشن و اتصال هوش مصنوعی Google Gemini
               </h2>
               <p className="text-xs font-bold duo-text-muted">
-                بدون وابستگی به سرور بک‌اند (۱۰۰٪ سازگار با Netlify) + دسترسی به فلش‌کارت‌ها روی تمام دستگاه‌ها
+                دامین رسمی: <span dir="ltr" className="text-[#1CB0F6]">https://cunt-academy.netlify.app/</span> • سینک بدون انقضا بین اکستنشن و سایت
               </p>
             </div>
           </div>
@@ -130,59 +179,119 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
         </div>
 
         <div className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
-          {/* SECTION 1: PUBLIC DOMAIN LINK */}
-          <div className="p-5 duo-card-subtle space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-black text-[#58CC02]">
-                <Globe className="w-4 h-4 shrink-0" />
-                <span>۱. آدرس دامین عمومی سایت شما (موبایل، لپ‌تاپ و هر مرورگر):</span>
+          {/* SECTION 1: GEMINI AI API KEY CONNECTION & LIVE VERIFICATION */}
+          <div
+            data-testid="gemini-connection-section"
+            className="p-5 duo-card-subtle space-y-3.5 border-2 border-[#CE82FF]"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-black text-[#CE82FF]">
+                <Cpu className="w-4 h-4 shrink-0" />
+                <span>۱. اتصال و تایید کلید هوش مصنوعی Google Gemini (مدل Gemini 2.5 Flash):</span>
               </div>
-              <span className="px-2.5 py-1 rounded-xl bg-[#58CC02]/15 text-[#58CC02] text-[10px] font-black">
-                Netlify &amp; Cloud Ready
-              </span>
-            </div>
-            <p className="text-xs font-bold duo-text-muted leading-relaxed">
-              این لینک عمومی برنامه شماست. می‌توانید آن را روی موبایل، تبلت یا هر سیستم دیگری باز کنید و وارد اکانت خود شوید تا تمام فلش‌کارت‌های AnkiDroid و تمرین‌های دولینگو شما بالا بیاید:
-            </p>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                readOnly
-                dir="ltr"
-                value={currentOrigin}
-                data-testid="public-domain-input"
-                className="flex-1 duo-surface-main border-2 duo-border rounded-2xl px-3.5 py-2.5 text-xs font-mono font-bold text-[#1CB0F6] select-all focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={handleCopyDomain}
-                data-testid="copy-public-domain-btn"
-                className="duo-btn duo-btn-green px-4 py-2.5 text-xs shrink-0"
-              >
-                {copiedDomain ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                <span>{copiedDomain ? 'کپی شد!' : 'کپی لینک سایت'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* SECTION 2: AUTHENTICATION */}
-          <div className="p-5 duo-card-subtle space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-black text-[#1CB0F6]">
-                <Sparkles className="w-4 h-4 shrink-0" />
-                <span>۲. ساخت اکانت و ورود (مستقیم روی کلاینت بدون نیاز به سرور بک‌اند):</span>
-              </div>
-              {user && (
-                <span className="px-3 py-1 rounded-xl bg-[#58CC02] text-white text-[11px] font-black flex items-center gap-1">
+              {geminiCfg.verified ? (
+                <span
+                  data-testid="gemini-verified-badge"
+                  className="px-3 py-1 rounded-xl bg-[#58CC02] text-white text-[11px] font-black flex items-center gap-1"
+                >
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>اکانت فعال</span>
+                  <span>متصل به Gemini 2.5 Flash (تایید شده)</span>
+                </span>
+              ) : (
+                <span className="px-3 py-1 rounded-xl bg-[#FF9600]/20 text-[#FF9600] text-[11px] font-black">
+                  در انتظار اتصال کلید
                 </span>
               )}
             </div>
 
+            <p className="text-xs font-bold duo-text-muted leading-relaxed">
+              کلید API خود را در کادر زیر وارد کرده و روی <strong>«بررسی و اتصال به Gemini AI»</strong> بزنید تا اتصال زنده به سرور گوگل تایید شود.{' '}
+              <strong className="text-[#58CC02]">
+                🔒 تضمین عدم مصرف خودکار: هیچ درخواستی به صورت خودکار ارسال نمی‌شود و فقط زمانی که خودتان روی دکمه ✨ کلیک کنید از کلید شما استفاده خواهد شد.
+              </strong>
+            </p>
+
+            <form onSubmit={handleVerifyGeminiKey} className="space-y-2.5">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <input
+                  type="text"
+                  dir="ltr"
+                  value={geminiKeyInput}
+                  onChange={(e) => setGeminiKeyInput(e.target.value)}
+                  placeholder="Enter your Google Gemini API Key"
+                  data-testid="gemini-api-key-input"
+                  className="flex-1 duo-surface-main border-2 duo-border rounded-2xl px-3.5 py-2.5 text-xs font-mono font-bold duo-text-main focus:outline-none focus:border-[#CE82FF]"
+                />
+                <button
+                  type="submit"
+                  disabled={geminiVerifying}
+                  data-testid="verify-gemini-key-btn"
+                  className="duo-btn duo-btn-purple px-4 py-2.5 text-xs shrink-0"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>
+                    {geminiVerifying
+                      ? 'در حال تست اتصال با Gemini...'
+                      : 'بررسی و اتصال به Gemini AI'}
+                  </span>
+                </button>
+                {geminiCfg.verified && (
+                  <button
+                    type="button"
+                    onClick={handleDisconnectGemini}
+                    className="duo-btn duo-btn-neutral px-3 py-2.5 text-xs shrink-0"
+                    title="قطع اتصال یا تغییر کلید"
+                  >
+                    حذف کلید
+                  </button>
+                )}
+              </div>
+            </form>
+
+            {geminiCfg.verified && (
+              <div
+                data-testid="gemini-status-message"
+                className="p-3 rounded-2xl bg-[#58CC02]/15 border-2 border-[#58CC02] text-[#58CC02] text-xs font-black flex items-center justify-between gap-2"
+              >
+                <span>{geminiCfg.statusMessageFa}</span>
+                <span dir="ltr" className="font-mono text-[10px] px-2 py-0.5 rounded-lg bg-[#58CC02] text-white">
+                  {geminiCfg.model}
+                </span>
+              </div>
+            )}
+
+            {geminiVerifyError && (
+              <div className="p-3 rounded-2xl bg-[#FF4B4B]/15 border-2 border-[#FF4B4B] text-[#FF4B4B] text-xs font-bold">
+                {geminiVerifyError}
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 2: GMAIL ACCOUNT & INSTANT LOGIN */}
+          <div className="p-5 duo-card-subtle space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-black text-[#1CB0F6]">
+                <Mail className="w-4 h-4 shrink-0" />
+                <span>۲. ورود با جیمیل و همگام‌سازی دوطرفه فلش‌کارت‌ها:</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {extensionBridgeConnected && (
+                  <span className="px-2.5 py-1 rounded-xl bg-[#1CB0F6]/20 text-[#1CB0F6] text-[10px] font-black">
+                    🧩 پل ارتباطی اکستنشن فعال
+                  </span>
+                )}
+                {user && (
+                  <span className="px-3 py-1 rounded-xl bg-[#58CC02] text-white text-[11px] font-black flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>اکانت جیمیل فعال</span>
+                  </span>
+                )}
+              </div>
+            </div>
+
             {!user ? (
               <div className="space-y-4">
-                {/* Option A: Direct Email / Gmail Registration & Login */}
+                {/* 1-Click Gmail Login Form */}
                 <form
                   onSubmit={handleDirectEmailSubmit}
                   className="p-4 rounded-2xl duo-surface-main border-2 duo-border space-y-3"
@@ -190,20 +299,12 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-xs font-black text-[#58CC02]">
                       <Mail className="w-4 h-4 shrink-0" />
-                      <span>ثبت‌نام / ورود فوری با جیمیل و رمز عبور (توصیه‌شده برای Netlify):</span>
+                      <span>ورود فوری با آدرس جیمیل (۱۰۰٪ سازگار با Netlify و اکستنشن):</span>
                     </div>
-                    <span className="text-[10px] text-[#58CC02] font-black">بدون نیاز به بک‌اند</span>
+                    <span className="text-[10px] text-[#58CC02] font-black">بدون خطای انقضا</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    <input
-                      type="text"
-                      value={nameInput}
-                      onChange={(e) => setNameInput(e.target.value)}
-                      placeholder="نام نمایشی (اختیاری)"
-                      data-testid="direct-name-input"
-                      className="duo-surface-secondary border-2 duo-border rounded-2xl px-3 py-2.5 text-xs font-bold duo-text-main focus:outline-none focus:border-[#58CC02]"
-                    />
                     <input
                       type="email"
                       required
@@ -215,12 +316,19 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
                       className="duo-surface-secondary border-2 duo-border rounded-2xl px-3 py-2.5 text-xs font-mono font-bold duo-text-main focus:outline-none focus:border-[#58CC02]"
                     />
                     <input
+                      type="text"
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      placeholder="نام نمایشی (اختیاری)"
+                      data-testid="direct-name-input"
+                      className="duo-surface-secondary border-2 duo-border rounded-2xl px-3 py-2.5 text-xs font-bold duo-text-main focus:outline-none focus:border-[#58CC02]"
+                    />
+                    <input
                       type="password"
-                      required
                       dir="ltr"
                       value={passwordInput}
                       onChange={(e) => setPasswordInput(e.target.value)}
-                      placeholder="رمز عبور (حداقل ۴ کاراکتر)"
+                      placeholder="رمز عبور (اختیاری)"
                       data-testid="direct-password-input"
                       className="duo-surface-secondary border-2 duo-border rounded-2xl px-3 py-2.5 text-xs font-mono font-bold duo-text-main focus:outline-none focus:border-[#58CC02]"
                     />
@@ -233,60 +341,25 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
                     className="w-full duo-btn duo-btn-green py-3 px-4 text-xs"
                   >
                     <UserPlus className="w-4 h-4" />
-                    <span>ساخت اکانت / ورود فوری با جیمیل</span>
+                    <span>ورود فوری به اکانت جیمیل و فعال‌سازی سینک</span>
                   </button>
                 </form>
 
-                {/* Option B: Firebase Google Popup */}
-                <div className="space-y-2.5">
-                  <button
-                    type="button"
-                    disabled={authLoading}
-                    onClick={onSignInGoogle}
-                    data-testid="modal-google-signin-btn"
-                    className="w-full duo-btn duo-btn-blue py-3 px-4 text-xs disabled:opacity-50"
-                  >
-                    <LogIn className="w-4 h-4" />
-                    <span>
-                      {authLoading
-                        ? 'در حال اتصال به پنجره گوگل...'
-                        : 'ورود با پنجره پاپ‌آپ گوگل (Google Sign-In Popup)'}
-                    </span>
-                  </button>
-
-                  <div className="flex items-center justify-between text-xs font-bold duo-text-muted px-1">
-                    <span>آیا از قبل کد اتصال ابری (Sync Key) دارید؟</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowTokenPaste((prev) => !prev)}
-                      className="text-[#FF9600] hover:underline font-black"
-                    >
-                      {showTokenPaste ? 'بستن فرم کد سینک' : 'ورود با کد سینک ابری (Sync Key)'}
-                    </button>
-                  </div>
-
-                  {showTokenPaste && (
-                    <form
-                      onSubmit={handleSyncTokenSubmit}
-                      className="p-3 rounded-2xl duo-surface-main border-2 duo-border flex items-center gap-2"
-                    >
-                      <input
-                        type="text"
-                        dir="ltr"
-                        value={syncTokenInput}
-                        onChange={(e) => setSyncTokenInput(e.target.value)}
-                        placeholder="Paste Cloud Sync Key..."
-                        className="flex-1 duo-surface-secondary border-2 duo-border rounded-xl px-3 py-2 text-xs font-mono font-bold duo-text-main focus:outline-none"
-                      />
-                      <button
-                        type="submit"
-                        className="duo-btn duo-btn-yellow px-4 py-2 text-xs shrink-0"
-                      >
-                        اتصال و سینک
-                      </button>
-                    </form>
-                  )}
-                </div>
+                {/* Firebase Google Popup */}
+                <button
+                  type="button"
+                  disabled={authLoading}
+                  onClick={onSignInGoogle}
+                  data-testid="modal-google-signin-btn"
+                  className="w-full duo-btn duo-btn-blue py-3 px-4 text-xs disabled:opacity-50"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>
+                    {authLoading
+                      ? 'در حال اتصال به پنجره گوگل...'
+                      : 'ورود با پنجره پاپ‌آپ گوگل (Google Sign-In)'}
+                  </span>
+                </button>
               </div>
             ) : (
               <div className="space-y-3">
@@ -319,6 +392,7 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
                       type="button"
                       onClick={onForcePushLocalToCloud}
                       disabled={syncStatus === 'syncing'}
+                      data-testid="sync-now-modal-btn"
                       className="duo-btn duo-btn-green px-3.5 py-2 text-xs"
                     >
                       <RefreshCw
@@ -327,7 +401,7 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
                       <span>
                         {syncStatus === 'syncing'
                           ? 'در حال همگام‌سازی...'
-                          : 'ذخیره و همگام‌سازی کارت‌ها'}
+                          : '🔄 همگام‌سازی فوری با اکستنشن و فضای ابری'}
                       </span>
                     </button>
 
@@ -361,23 +435,34 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
                 {syncError}
               </div>
             )}
+
+            {tokenSuccessMsg && (
+              <div className="p-3 rounded-2xl bg-[#58CC02]/15 border-2 border-[#58CC02] text-[#58CC02] text-xs font-black">
+                {tokenSuccessMsg}
+              </div>
+            )}
           </div>
 
-          {/* SECTION 3: EXTENSION CLOUD SYNC KEY */}
+          {/* SECTION 3: NON-EXPIRING EXTENSION SYNC KEY & TWO-WAY CODE IMPORT */}
           <div className="p-5 duo-card-subtle space-y-3">
-            <div className="flex items-center gap-2 text-xs font-black text-[#FF9600]">
-              <KeyRound className="w-4 h-4 shrink-0" />
-              <span>۳. اتصال اکستنشن مرورگر (Zen / Firefox / Chrome) به اکانت شما روی هر دستگاه:</span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-black text-[#FF9600]">
+                <KeyRound className="w-4 h-4 shrink-0" />
+                <span>۳. اتصال دائمی اکستنشن مرورگر و انتقال کلمات (بدون انقضا):</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTokenPaste((prev) => !prev)}
+                className="text-xs font-black text-[#1CB0F6] hover:underline"
+              >
+                {showTokenPaste ? 'بستن کادر ورود کد' : '📥 جای‌گذاری کد سینک از اکستنشن'}
+              </button>
             </div>
 
-            {!user ? (
-              <p className="text-xs font-bold duo-text-muted leading-relaxed">
-                ابتدا در بخش بالا وارد اکانت جیمیل خود شوید تا <strong>کد اتصال اکستنشن (Extension Cloud Sync Key)</strong> اختصاصی شما ساخته شود.
-              </p>
-            ) : (
+            {user ? (
               <div className="space-y-2.5">
                 <p className="text-xs font-bold duo-text-muted leading-relaxed">
-                  هر زمان روی لپ‌تاپ یا سیستم جدیدی اکستنشن <code dir="ltr" className="text-[#1CB0F6] font-black">Cunt Academy</code> را نصب کردید، این کد را کپی کنید و در صفحه فلش‌کارت اکستنشن (<code dir="ltr" className="text-[#58CC02] font-black">☁ اتصال اکانت جیمیل</code>) قرار دهید:
+                  اگر اکستنشن روی همین مرورگر نصب باشد، کلمات جدید به صورت <strong>خودکار</strong> با سایت سینک می‌شوند. همچنین می‌توانید در پاپ‌آپ اکستنشن، یا همین جیمیل (<code dir="ltr" className="text-[#58CC02] font-black">{user.email}</code>) را وارد کنید یا کد دائمی زیر را کپی کنید:
                 </p>
                 <div className="flex items-center gap-2">
                   <input
@@ -395,16 +480,80 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
                     className="duo-btn duo-btn-yellow px-4 py-2.5 text-xs shrink-0"
                   >
                     {copiedSyncKey ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    <span>{copiedSyncKey ? 'کد اتصال کپی شد!' : 'کپی کد اتصال اکستنشن'}</span>
+                    <span>{copiedSyncKey ? 'کد دائمی کپی شد!' : 'کپی کد اتصال اکستنشن'}</span>
                   </button>
                 </div>
               </div>
+            ) : (
+              <p className="text-xs font-bold duo-text-muted leading-relaxed">
+                در بخش بالا آدرس جیمیل خود را وارد کنید تا کد دائمی اتصال اکستنشن ساخته شود.
+              </p>
             )}
 
+            {showTokenPaste && (
+              <form
+                onSubmit={handleSyncTokenSubmit}
+                className="p-3.5 rounded-2xl duo-surface-main border-2 duo-border space-y-2"
+              >
+                <div className="text-xs font-black text-[#1CB0F6]">
+                  جای‌گذاری کد سینک اکستنشن (برای وارد کردن فوری تمام کلمات ذخیره‌شده در پاپ‌آپ اکستنشن به سایت):
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    dir="ltr"
+                    value={syncTokenInput}
+                    onChange={(e) => setSyncTokenInput(e.target.value)}
+                    placeholder="Paste Sync Code from Extension Popup..."
+                    data-testid="paste-sync-token-input"
+                    className="flex-1 duo-surface-secondary border-2 duo-border rounded-xl px-3 py-2 text-xs font-mono font-bold duo-text-main focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    data-testid="submit-sync-token-btn"
+                    className="duo-btn duo-btn-green px-4 py-2 text-xs shrink-0"
+                  >
+                    اتصال و دریافت کلمات
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          {/* SECTION 4: CANONICAL PUBLIC DOMAIN LINK */}
+          <div className="p-5 duo-card-subtle space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-black text-[#58CC02]">
+                <Globe className="w-4 h-4 shrink-0" />
+                <span>۴. آدرس رسمی سایت شما (موبایل، تبلت، دسکتاپ و اکستنشن):</span>
+              </div>
+              <span className="px-2.5 py-1 rounded-xl bg-[#58CC02]/15 text-[#58CC02] text-[10px] font-black">
+                Official Domain
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                dir="ltr"
+                value={canonicalDomain}
+                data-testid="public-domain-input"
+                className="flex-1 duo-surface-main border-2 duo-border rounded-2xl px-3.5 py-2.5 text-xs font-mono font-bold text-[#1CB0F6] select-all focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleCopyDomain}
+                data-testid="copy-public-domain-btn"
+                className="duo-btn duo-btn-green px-4 py-2.5 text-xs shrink-0"
+              >
+                {copiedDomain ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedDomain ? 'کپی شد!' : 'کپی لینک سایت'}</span>
+              </button>
+            </div>
             <div className="flex items-center gap-2 text-xs font-bold duo-text-muted pt-1">
               <ShieldCheck className="w-4 h-4 text-[#58CC02] shrink-0" />
               <span>
-                سایت و سیستم اکانت ۱۰۰٪ سمت کلاینت (SPA) اجرا می‌شوند و روی Netlify بدون نیاز به هیچ سرور بک‌اندی کار می‌کنند.
+                تمام لینک‌های داخل پاپ‌آپ اکستنشن و پنل سایت به صورت یکپارچه به <code dir="ltr" className="text-[#58CC02]">https://cunt-academy.netlify.app/</code> متصل هستند.
               </span>
             </div>
           </div>

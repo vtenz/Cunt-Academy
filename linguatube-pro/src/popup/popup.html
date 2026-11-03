@@ -139,19 +139,22 @@
       <!-- CLOUD SYNC MODAL INSIDE POPUP -->
       <section id="popup-view-cloud" class="ca-popup-view">
         <div class="ca-cloud-box">
-          <div class="ca-cloud-title">☁ اتصال به اکانت جیمیل و همگام‌سازی ابری</div>
+          <div class="ca-cloud-title">☁ اتصال به اکانت جیمیل و همگام‌سازی دوطرفه با سایت</div>
           <p class="ca-cloud-desc">
-            کد اتصال اکستنشن (Sync Key) را از سایت Cunt Academy کپی کرده و در کادر زیر قرار دهید تا تمام فلش‌کارت‌های شما بین سایت و اکستنشن همگام شوند:
+            آدرس جیمیل خود (مثلاً <strong dir="ltr">you@gmail.com</strong>) یا کد اتصال اکستنشن را از سایت <strong dir="ltr">cunt-academy.netlify.app</strong> وارد کنید تا تمام کلمات ذخیره‌شده بدون انقضا بین اکستنشن و سایت سینک شوند:
           </p>
           <div id="popup-cloud-status-box" class="ca-cloud-status"></div>
-          <input type="text" id="popup-sync-token-input" dir="ltr" placeholder="کد اتصال اکستنشن را اینجا Paste کنید..." />
+          <input type="text" id="popup-sync-token-input" dir="ltr" placeholder="you@gmail.com یا کد اتصال اکستنشن..." />
           <div class="ca-cloud-btn-row">
-            <button type="button" id="popup-connect-token-btn" class="ca-btn-emerald">اتصال و همگام‌سازی</button>
-            <button type="button" id="popup-sync-now-btn" class="ca-btn-purple">🔄 سینک فوری</button>
+            <button type="button" id="popup-connect-token-btn" class="ca-btn-emerald">اتصال به اکانت</button>
+            <button type="button" id="popup-sync-now-btn" class="ca-btn-purple">🔄 سینک و ارسال به سایت</button>
           </div>
+          <button type="button" id="popup-copy-ext-token-btn" class="ca-btn-ghost full" style="margin-top:6px;">
+            📋 کپی کد سینک کلمات اکستنشن (برای قرار دادن در سایت)
+          </button>
           <hr class="ca-divider" />
-          <div class="ca-cloud-title">🌐 آدرس مستقیم سایت شما (Netlify / Public URL)</div>
-          <input type="url" id="popup-site-url-input" dir="ltr" placeholder="https://..." />
+          <div class="ca-cloud-title">🌐 آدرس رسمی سایت Cunt Academy</div>
+          <input type="url" id="popup-site-url-input" dir="ltr" value="https://cunt-academy.netlify.app/" placeholder="https://cunt-academy.netlify.app/" />
           <button type="button" id="popup-save-site-url-btn" class="ca-btn-ghost full">ذخیره آدرس سایت</button>
         </div>
       </section>
@@ -160,12 +163,12 @@
     <!-- 4. STICKY BOTTOM FOOTER: DIRECT WEBSITE LINK + FULL EXTENSION PORTAL -->
     <footer class="ca-popup-footer">
       <a
-        href="https://ais-pre-kpvvaywqip7q5ueoy2ov3t-258196294078.us-east1.run.app"
+        href="https://cunt-academy.netlify.app/"
         target="_blank"
         rel="noopener noreferrer"
         id="popup-open-website-link"
         class="ca-footer-website-btn"
-        title="باز کردن مستقیم سایت Cunt Academy در تب جدید"
+        title="باز کردن مستقیم سایت Cunt Academy و انتقال خودکار کلمات جدید"
       >
         <span>🌐 ورود به سایت اصلی Cunt Academy</span>
         <span dir="ltr" class="ca-ext-arrow">↗</span>

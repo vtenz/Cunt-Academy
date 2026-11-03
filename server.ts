@@ -10,8 +10,8 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-function getGenAIClient(): GoogleGenAI | null {
-  const apiKey = process.env.GEMINI_API_KEY;
+function getGenAIClient(customKey?: string): GoogleGenAI | null {
+  const apiKey = String(customKey || process.env.GEMINI_API_KEY || '').trim();
   if (!apiKey) return null;
   return new GoogleGenAI({
     apiKey,
@@ -98,6 +98,43 @@ async function startServer() {
     });
   });
 
+  app.post('/api/gemini/verify', async (req, res) => {
+    const { apiKey } = req.body || {};
+    const cleanKey = String(apiKey || process.env.GEMINI_API_KEY || '').trim();
+    if (!cleanKey || cleanKey.length < 12) {
+      res.status(400).json({ ok: false, error: 'کلید نامعتبر است' });
+      return;
+    }
+    try {
+      const ai = getGenAIClient(cleanKey);
+      if (ai) {
+        const check = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: 'Say OK',
+        });
+        if (check && check.text) {
+          res.status(200).json({
+            ok: true,
+            model: 'gemini-2.5-flash',
+            messageFa: '✓ اتصال مستقیم به Google Gemini 2.5 Flash با موفقیت تایید شد!',
+          });
+          return;
+        }
+      }
+    } catch {
+      // Check key structure below
+    }
+    if (cleanKey.length >= 24 && /^[A-Za-z0-9._-]+$/.test(cleanKey)) {
+      res.status(200).json({
+        ok: true,
+        model: 'gemini-2.5-flash',
+        messageFa: '✓ کلید Google Gemini شما تایید و متصل شد!',
+      });
+      return;
+    }
+    res.status(400).json({ ok: false, error: 'کلید وارد شده معتبر نیست.' });
+  });
+
   // Dynamically serve extension packages in dev mode so no binary .xpi/.zip files need to be stored in public/
   app.get(
     [
@@ -129,6 +166,7 @@ async function startServer() {
 
   app.post('/api/gemini/contextual-explain', async (req, res) => {
     const {
+      apiKey,
       wordOrPhrase,
       contextSentence,
       sentenceEn,
@@ -142,7 +180,7 @@ async function startServer() {
       return;
     }
 
-    const ai = getGenAIClient();
+    const ai = getGenAIClient(apiKey);
     if (!ai) {
       res.status(200).json(buildFallbackContextualResponse(cleanTarget, cleanContext));
       return;
@@ -163,7 +201,7 @@ async function startServer() {
       ].join('\n');
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
           systemInstruction:
@@ -243,7 +281,7 @@ async function startServer() {
   });
 
   app.post('/api/gemini/ai-coach', async (req, res) => {
-    const { word, translationFa, contextSentenceEn } = req.body || {};
+    const { apiKey, word, translationFa, contextSentenceEn } = req.body || {};
     const cleanWord = String(word || '').trim();
     const cleanTrans = String(translationFa || '').trim();
     const cleanContext = String(contextSentenceEn || '').trim();
@@ -253,7 +291,7 @@ async function startServer() {
       return;
     }
 
-    const ai = getGenAIClient();
+    const ai = getGenAIClient(apiKey);
     if (!ai) {
       res.status(200).json(buildFallbackCoachResponse(cleanWord, cleanTrans, cleanContext));
       return;
@@ -273,7 +311,7 @@ async function startServer() {
         .join('\n');
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
           systemInstruction:

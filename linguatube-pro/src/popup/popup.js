@@ -13,7 +13,7 @@
   const Database = globalThis.LTDatabase;
   const ext = Constants && Constants.getExtApi ? Constants.getExtApi() : (typeof browser !== 'undefined' ? browser : null);
 
-  const DEFAULT_WEBSITE_URL = 'https://ais-pre-kpvvaywqip7q5ueoy2ov3t-258196294078.us-east1.run.app';
+  const DEFAULT_WEBSITE_URL = 'https://cunt-academy.netlify.app/';
 
   const DEMO_SEED_CARDS = [
     {
@@ -128,19 +128,39 @@
     state.cards = cards;
     state.cloudAccount = await Database.getCloudAccount();
     const settings = await Database.getSettings();
-    if (settings && settings.publicWebsiteUrl) {
+    if (settings && settings.publicWebsiteUrl && !settings.publicWebsiteUrl.includes('run.app')) {
       state.websiteUrl = settings.publicWebsiteUrl;
+    } else {
+      state.websiteUrl = DEFAULT_WEBSITE_URL;
     }
-    updateFooterWebsiteLink();
+    await updateFooterWebsiteLink();
     updateCloudHeaderBadge();
     renderAll();
   }
 
-  function updateFooterWebsiteLink() {
+  async function buildSyncedWebsiteUrl() {
+    const base = (state.websiteUrl || DEFAULT_WEBSITE_URL).replace(/#.*$/, '').replace(/\/?$/, '/');
+    if (Database.generatePopupSyncToken) {
+      try {
+        const syncToken = await Database.generatePopupSyncToken();
+        if (syncToken) {
+          return `${base}#ca_sync=${encodeURIComponent(syncToken)}`;
+        }
+      } catch (_e) {
+        // fallback to base URL
+      }
+    }
+    return base;
+  }
+
+  async function updateFooterWebsiteLink() {
     const linkEl = document.getElementById('popup-open-website-link');
     const inputEl = document.getElementById('popup-site-url-input');
-    if (linkEl) linkEl.href = state.websiteUrl || DEFAULT_WEBSITE_URL;
-    if (inputEl && !inputEl.value) inputEl.value = state.websiteUrl || DEFAULT_WEBSITE_URL;
+    const syncedHref = await buildSyncedWebsiteUrl();
+    if (linkEl) linkEl.href = syncedHref;
+    if (inputEl && (!inputEl.value || inputEl.value.includes('run.app'))) {
+      inputEl.value = state.websiteUrl || DEFAULT_WEBSITE_URL;
+    }
   }
 
   function updateCloudHeaderBadge() {
@@ -149,12 +169,12 @@
     if (state.cloudAccount && state.cloudAccount.email) {
       if (labelEl) labelEl.textContent = `☁ ${state.cloudAccount.email.split('@')[0]}`;
       if (statusBox) {
-        statusBox.textContent = `✓ متصل به اکانت جیمیل: ${state.cloudAccount.email}`;
+        statusBox.textContent = `✓ متصل به جیمیل: ${state.cloudAccount.email} (${state.cards.length} کارت آماده سینک با سایت)`;
       }
     } else {
       if (labelEl) labelEl.textContent = '☁ سینک ابری';
       if (statusBox) {
-        statusBox.textContent = 'هنوز کد اتصال اکانت جیمیل وارد نشده است.';
+        statusBox.textContent = `آماده اتصال — جیمیل یا کد اتصال سایت را وارد کنید (${state.cards.length} کارت در اکستنشن).`;
       }
     }
   }
@@ -541,9 +561,12 @@
       const statusBox = document.getElementById('popup-cloud-status-box');
       if (!raw) return;
       try {
-        if (statusBox) statusBox.textContent = 'در حال اتصال به اکانت جیمیل...';
+        if (statusBox) statusBox.textContent = 'در حال اتصال و همگام‌سازی کلمات...';
         await Database.connectCloudSyncToken(raw);
         await loadAllState();
+        if (statusBox) {
+          statusBox.textContent = `✓ متصل شد! تمام ${state.cards.length} کارت شما همگام‌سازی شدند.`;
+        }
       } catch (err) {
         if (statusBox) statusBox.textContent = `خطا: ${err.message || err}`;
       }
@@ -551,13 +574,47 @@
 
     document.getElementById('popup-sync-now-btn')?.addEventListener('click', async () => {
       const statusBox = document.getElementById('popup-cloud-status-box');
+      const raw = document.getElementById('popup-sync-token-input')?.value?.trim();
       try {
-        if (statusBox) statusBox.textContent = 'در حال همگام‌سازی ابری...';
-        await Database.syncWithCloudAccount();
+        if (statusBox) statusBox.textContent = 'در حال همگام‌سازی و آماده‌سازی انتقال کلمات به سایت...';
+        if (raw && (!state.cloudAccount || !state.cloudAccount.email)) {
+          await Database.connectCloudSyncToken(raw);
+        } else if (state.cloudAccount) {
+          await Database.syncWithCloudAccount();
+        }
         await loadAllState();
-        if (statusBox) statusBox.textContent = '✓ همگام‌سازی ابری با موفقیت انجام شد!';
+        const syncedUrl = await buildSyncedWebsiteUrl();
+        if (ext && ext.tabs && typeof ext.tabs.create === 'function') {
+          ext.tabs.create({ url: syncedUrl });
+        } else {
+          window.open(syncedUrl, '_blank');
+        }
+        if (statusBox) {
+          statusBox.textContent = `✓ تمام ${state.cards.length} کلمه اکستنشن به سایت Cunt Academy منتقل شدند!`;
+        }
       } catch (err) {
         if (statusBox) statusBox.textContent = `خطا: ${err.message || err}`;
+      }
+    });
+
+    document.getElementById('popup-copy-ext-token-btn')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const statusBox = document.getElementById('popup-cloud-status-box');
+      if (!Database.generatePopupSyncToken) return;
+      try {
+        const token = await Database.generatePopupSyncToken();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(token);
+        }
+        btn.textContent = '✓ کد سینک کلمات کپی شد!';
+        if (statusBox) {
+          statusBox.textContent = `✓ کد سینک حاوی ${state.cards.length} کلمه کپی شد؛ می‌توانید در بخش «همگام‌سازی» سایت Paste کنید.`;
+        }
+        setTimeout(() => {
+          btn.textContent = '📋 کپی کد سینک کلمات اکستنشن (برای قرار دادن در سایت)';
+        }, 2500);
+      } catch (_err) {
+        // ignore
       }
     });
 
@@ -566,7 +623,7 @@
       if (val && /^https?:\/\//i.test(val)) {
         state.websiteUrl = val;
         await Database.saveSettings({ publicWebsiteUrl: val });
-        updateFooterWebsiteLink();
+        await updateFooterWebsiteLink();
       }
     });
 

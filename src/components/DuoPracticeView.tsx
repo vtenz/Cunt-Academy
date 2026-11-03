@@ -6,6 +6,7 @@ import {
   gradeDuoWordBankAnswer,
   toPersianDigits,
 } from '../utils/linguatubeLogic';
+import { requestOnDemandGeminiCoachTip } from '../services/geminiService';
 
 interface DuoPracticeViewProps {
   cards: LeitnerCard[];
@@ -220,33 +221,26 @@ export const DuoPracticeView: React.FC<DuoPracticeViewProps> = ({
     if (!currentQuestion || aiCoachLoading) return;
     setAiCoachLoading(true);
     try {
-      const res = await fetch('/api/gemini/ai-coach', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          word: currentQuestion.targetWordEn,
-          translationFa: currentQuestion.targetMeaningFa,
-          contextSentenceEn: currentQuestion.contextSentenceEn,
-        }),
+      const tip = await requestOnDemandGeminiCoachTip({
+        word: currentQuestion.targetWordEn,
+        translationFa: currentQuestion.targetMeaningFa,
+        contextSentenceEn: currentQuestion.contextSentenceEn,
+        contextSentenceFa: currentQuestion.contextSentenceFa,
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.mnemonicFa) {
-          setAiCoachData(data);
-          setAiCoachLoading(false);
-          return;
-        }
-      }
-    } catch {
-      // fallback below
+      setAiCoachData(tip);
+    } catch (err) {
+      setAiCoachData({
+        mnemonicFa:
+          err instanceof Error
+            ? `⚠️ ${err.message}`
+            : `تصور کنید عبارت «${currentQuestion.targetWordEn}» کلید اصلی درک جمله «${currentQuestion.contextSentenceFa}» است.`,
+        usageTipFa: `در مکالمات روزمره و ویدیوهای یوتیوب، «${currentQuestion.targetWordEn}» به معنی «${currentQuestion.targetMeaningFa}» بسیار پرکاربرد است.`,
+        miniExampleEn: currentQuestion.contextSentenceEn,
+        miniExampleFa: currentQuestion.contextSentenceFa,
+      });
+    } finally {
+      setAiCoachLoading(false);
     }
-    setAiCoachData({
-      mnemonicFa: `تصور کنید عبارت «${currentQuestion.targetWordEn}» کلید اصلی درک جمله «${currentQuestion.contextSentenceFa}» است.`,
-      usageTipFa: `در مکالمات روزمره و ویدیوهای یوتیوب، «${currentQuestion.targetWordEn}» به معنی «${currentQuestion.targetMeaningFa}» بسیار پرکاربرد است.`,
-      miniExampleEn: currentQuestion.contextSentenceEn,
-      miniExampleFa: currentQuestion.contextSentenceFa,
-    });
-    setAiCoachLoading(false);
   };
 
   // LESSON COMPLETED CELEBRATION SCREEN

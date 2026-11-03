@@ -78,7 +78,7 @@
   function renderCloudSyncBanner() {
     const container = document.getElementById('lr-cloud-sync-content');
     if (!container) return;
-    const publicAppUrl = 'https://ais-pre-kpvvaywqip7q5ueoy2ov3t-258196294078.us-east1.run.app';
+    const publicAppUrl = 'https://cunt-academy.netlify.app/';
     if (state.cloudAccount && state.cloudAccount.email) {
       container.innerHTML = `
         <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;" dir="rtl">

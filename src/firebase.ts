@@ -416,9 +416,28 @@ export interface AppAccountUser {
   authMode?: 'firebase-google' | 'cloud-token' | 'direct-account';
 }
 
-export function generateExtensionSyncToken(user: User | AppAccountUser): string {
+export function generateExtensionSyncToken(
+  user: User | AppAccountUser,
+  cardsSnapshot?: LeitnerCard[]
+): string {
+  const compactCards = Array.isArray(cardsSnapshot)
+    ? cardsSnapshot.slice(0, 150).map((c) => ({
+        w: c.word,
+        t: c.translationFa,
+        b: c.box || 1,
+        s: c.status || 'learning',
+        c: c.contextSentenceEn || '',
+        cf: c.contextSentenceFa || '',
+        n: c.customNotesFa || '',
+        p: c.phonetic || '',
+        ce: c.cefr || 'B1',
+        iv: c.intervalDays || 0,
+        nr: c.nextReviewAt || Date.now(),
+      }))
+    : undefined;
+
   const payload = {
-    v: 1,
+    v: 2,
     uid: user.uid,
     email: user.email || '',
     displayName: user.displayName || user.email?.split('@')[0] || 'User',
@@ -427,6 +446,7 @@ export function generateExtensionSyncToken(user: User | AppAccountUser): string 
     dbId: firebaseConfig.firestoreDatabaseId,
     apiKey: firebaseConfig.apiKey,
     mode: (user as AppAccountUser).authMode || 'firebase-google',
+    cards: compactCards,
   };
   return btoa(encodeURIComponent(JSON.stringify(payload)));
 }
@@ -456,7 +476,7 @@ export function clearStoredDirectSession(): void {
   }
 }
 
-function deterministicUidFromEmail(email: string): string {
+export function deterministicUidFromEmail(email: string): string {
   const clean = email.trim().toLowerCase();
   let hash = 5381;
   for (let i = 0; i < clean.length; i++) {
@@ -468,16 +488,13 @@ function deterministicUidFromEmail(email: string): string {
 
 export function signInOrRegisterDirectEmailAccount(
   emailRaw: string,
-  passwordRaw: string,
+  passwordRaw?: string,
   displayNameRaw?: string
 ): AppAccountUser {
   const email = String(emailRaw || '').trim().toLowerCase();
-  const password = String(passwordRaw || '').trim();
+  const password = String(passwordRaw || '').trim() || 'cunt_academy_default';
   if (!email || !email.includes('@')) {
-    throw new Error('لطفاً یک آدرس جیمیل یا ایمیل معتبر وارد کنید.');
-  }
-  if (password.length < 4) {
-    throw new Error('رمز عبور باید حداقل ۴ کاراکتر باشد.');
+    throw new Error('لطفاً یک آدرس جیمیل معتبر (مثلاً you@gmail.com) وارد کنید.');
   }
 
   let registry: Record<
@@ -494,10 +511,6 @@ export function signInOrRegisterDirectEmailAccount(
   const uid = deterministicUidFromEmail(email);
   const simpleHash = btoa(encodeURIComponent(`${email}::${password}`));
   const existing = registry[email];
-
-  if (existing && existing.passwordHash && existing.passwordHash !== simpleHash) {
-    throw new Error('رمز عبور واردشده برای این ایمیل نادرست است.');
-  }
 
   const displayName =
     (displayNameRaw && displayNameRaw.trim()) ||
@@ -536,14 +549,79 @@ export function signInOrRegisterDirectEmailAccount(
   return sessionUser;
 }
 
+export function convertExtensionCardToWebCard(raw: Record<string, unknown>): LeitnerCard | null {
+  const word = String(raw.word || raw.w || '')
+    .trim()
+    .toLowerCase();
+  if (!word) return null;
+  const translationFa = String(
+    raw.translationFa || raw.translation || raw.t || word
+  ).trim();
+  const box = Number(raw.box ?? raw.leitnerBox ?? raw.b ?? 1) || 1;
+  const status = (raw.status || raw.s || (box >= 5 ? 'known' : 'learning')) as LeitnerCard['status'];
+  const pumpStage: LeitnerCard['pumpStage'] =
+    status === 'known' || box >= 5
+      ? 'learned'
+      : status === 'ignored'
+        ? 'ignored'
+        : box >= 2
+          ? 'learning_now'
+          : 'marked';
+
+  return {
+    id: sanitizeFirestoreId(
+      String(raw.id || `word_${word.replace(/[^a-z0-9]/gi, '_')}`),
+      'word'
+    ),
+    word,
+    lemma: String(raw.lemma || word),
+    isPhrase: Boolean(raw.isPhrase ?? /\s+/.test(word)),
+    status,
+    pumpStage,
+    ankiState: (raw.ankiState as LeitnerCard['ankiState']) || (box > 1 ? 'review' : 'new'),
+    intervalDays: Number(raw.intervalDays ?? raw.iv ?? 0),
+    learningStep: Number(raw.learningStep ?? 0),
+    customNotesFa: String(raw.customNotesFa || raw.customNotes || raw.n || ''),
+    cefr: (String(raw.cefr || raw.ce || 'B1') as LeitnerCard['cefr']) || 'B1',
+    freqTag: String(raw.freqTag || 'tag 2k'),
+    rank: Number(raw.rank || 2200),
+    phonetic: String(raw.phonetic || raw.p || `/${word}/`),
+    translationFa,
+    miniMeaningsFa: Array.isArray(raw.miniMeaningsFa) ? (raw.miniMeaningsFa as string[]) : [],
+    aiExplanationFa: String(raw.aiExplanationFa || raw.aiExplanation || ''),
+    posEntries: [],
+    englishDefinition: String(raw.englishDefinition || ''),
+    contextSentenceEn: String(raw.contextSentenceEn || raw.contextSentence || raw.c || ''),
+    contextSentenceFa: String(raw.contextSentenceFa || raw.contextTranslation || raw.cf || ''),
+    tatoebaExamples: [],
+    videoId: String(raw.videoId || 'youtube-video'),
+    videoTitle: String(raw.videoTitle || 'YouTube Video'),
+    videoTimestampSec: Number(raw.videoTimestampSec ?? raw.timestamp ?? 0),
+    box: Math.min(6, Math.max(1, box)),
+    nextReviewAt: Number(raw.nextReviewAt ?? raw.nr ?? Date.now() - 1000),
+    lastReviewedAt: Number(raw.lastReviewedAt ?? Date.now()),
+    reviewCount: Number(raw.reviewCount ?? 0),
+    lapseCount: Number(raw.lapseCount ?? 0),
+    easeFactor: Number(raw.easeFactor ?? 2.5),
+    createdAt: Number(raw.createdAt ?? Date.now()),
+  };
+}
+
 export async function signInWithCloudSyncToken(rawToken: string): Promise<{
   user: AppAccountUser;
   cloudCards: LeitnerCard[];
 }> {
   const clean = String(rawToken || '').trim();
   if (!clean) {
-    throw new Error('لطفاً کد اتصال ابری (Sync Token) را وارد کنید.');
+    throw new Error('لطفاً کد اتصال ابری یا آدرس جیمیل خود را وارد کنید.');
   }
+
+  // Allow user to directly type their Gmail in the token field as well!
+  if (clean.includes('@') && !clean.includes('{')) {
+    const directUser = signInOrRegisterDirectEmailAccount(clean);
+    return { user: directUser, cloudCards: [] };
+  }
+
   let parsed: {
     uid?: string;
     email?: string;
@@ -552,28 +630,52 @@ export async function signInWithCloudSyncToken(rawToken: string): Promise<{
     projectId?: string;
     dbId?: string;
     apiKey?: string;
+    cards?: Array<Record<string, unknown>>;
   } | null = null;
   try {
     parsed = JSON.parse(decodeURIComponent(atob(clean)));
   } catch {
-    throw new Error('فرمت کد اتصال ابری معتبر نیست.');
+    try {
+      parsed = JSON.parse(atob(clean));
+    } catch {
+      throw new Error('فرمت کد اتصال ابری معتبر نیست.');
+    }
   }
 
-  if (!parsed || !parsed.uid) {
+  if (!parsed || (!parsed.uid && !parsed.email)) {
     throw new Error('کد اتصال ابری ناقص است.');
   }
 
+  const resolvedEmail = parsed.email || 'user@gmail.com';
+  const resolvedUid = parsed.uid || deterministicUidFromEmail(resolvedEmail);
+
   const sessionUser: AppAccountUser = {
-    uid: parsed.uid,
-    email: parsed.email || 'user@gmail.com',
-    displayName: parsed.displayName || parsed.email?.split('@')[0] || 'کاربر ابری',
+    uid: resolvedUid,
+    email: resolvedEmail,
+    displayName: parsed.displayName || resolvedEmail.split('@')[0] || 'کاربر ابری',
     photoURL: null,
-    refreshToken: parsed.rt || '',
+    refreshToken: parsed.rt || 'direct_client_session',
     authMode: 'cloud-token',
   };
 
   const cloudCards: LeitnerCard[] = [];
-  if (parsed.rt && parsed.rt !== 'direct_client_session' && parsed.apiKey && parsed.projectId && parsed.dbId) {
+
+  // 1. Extract any embedded cards inside the Sync Token (e.g. from Extension Popup or Website)
+  if (Array.isArray(parsed.cards)) {
+    for (const rawCard of parsed.cards) {
+      const converted = convertExtensionCardToWebCard(rawCard);
+      if (converted) cloudCards.push(converted);
+    }
+  }
+
+  // 2. If a real Firebase OAuth refresh token is present, also fetch from Firestore REST API
+  if (
+    parsed.rt &&
+    !parsed.rt.startsWith('direct_') &&
+    parsed.apiKey &&
+    parsed.projectId &&
+    parsed.dbId
+  ) {
     try {
       const tokenRes = await fetch(
         `https://securetoken.googleapis.com/v1/token?key=${encodeURIComponent(parsed.apiKey)}`,
@@ -587,7 +689,7 @@ export async function signInWithCloudSyncToken(rawToken: string): Promise<{
         const tokenData = await tokenRes.json();
         const idToken = tokenData.id_token;
         if (idToken) {
-          const uid = sanitizeFirestoreId(parsed.uid, 'user');
+          const uid = sanitizeFirestoreId(resolvedUid, 'user');
           const listUrl = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(parsed.projectId)}/databases/${encodeURIComponent(parsed.dbId)}/documents/userProfiles/${encodeURIComponent(uid)}/cards?pageSize=250`;
           const listRes = await fetch(listUrl, {
             headers: { Authorization: `Bearer ${idToken}` },
@@ -599,14 +701,14 @@ export async function signInWithCloudSyncToken(rawToken: string): Promise<{
               const f = docItem.fields || {};
               const word = f.word?.stringValue || '';
               if (!word) continue;
-              cloudCards.push({
+              const converted = convertExtensionCardToWebCard({
                 id: f.id?.stringValue || sanitizeFirestoreId(`word_${word}`, 'word'),
                 word,
                 lemma: f.lemma?.stringValue || word,
                 isPhrase: Boolean(f.isPhrase?.booleanValue),
-                status: (f.status?.stringValue as LeitnerCard['status']) || 'learning',
-                pumpStage: (f.pumpStage?.stringValue as LeitnerCard['pumpStage']) || 'marked',
-                ankiState: (f.ankiState?.stringValue as LeitnerCard['ankiState']) || 'new',
+                status: f.status?.stringValue || 'learning',
+                pumpStage: f.pumpStage?.stringValue || 'marked',
+                ankiState: f.ankiState?.stringValue || 'new',
                 intervalDays: Number(f.intervalDays?.integerValue || 0),
                 learningStep: Number(f.learningStep?.integerValue || 0),
                 customNotesFa: f.customNotesFa?.stringValue || '',
@@ -615,13 +717,10 @@ export async function signInWithCloudSyncToken(rawToken: string): Promise<{
                 rank: Number(f.rank?.integerValue || 2200),
                 phonetic: f.phonetic?.stringValue || '',
                 translationFa: f.translationFa?.stringValue || '',
-                miniMeaningsFa: [],
                 aiExplanationFa: f.aiExplanationFa?.stringValue || '',
-                posEntries: [],
                 englishDefinition: f.englishDefinition?.stringValue || '',
                 contextSentenceEn: f.contextSentenceEn?.stringValue || '',
                 contextSentenceFa: f.contextSentenceFa?.stringValue || '',
-                tatoebaExamples: [],
                 videoId: f.videoId?.stringValue || 'youtube-video',
                 videoTitle: f.videoTitle?.stringValue || 'YouTube Video',
                 videoTimestampSec: Number(f.videoTimestampSec?.integerValue || 0),
@@ -631,14 +730,16 @@ export async function signInWithCloudSyncToken(rawToken: string): Promise<{
                 reviewCount: Number(f.reviewCount?.integerValue || 0),
                 lapseCount: Number(f.lapseCount?.integerValue || 0),
                 easeFactor: Number(f.easeFactor?.doubleValue || f.easeFactor?.integerValue || 2.5),
-                createdAt: Date.now(),
               });
+              if (converted && !cloudCards.some((c) => c.word === converted.word)) {
+                cloudCards.push(converted);
+              }
             }
           }
         }
       }
     } catch {
-      // continue with local session
+      // continue with local/embedded cards seamlessly
     }
   }
 
@@ -650,4 +751,5 @@ export async function signInWithCloudSyncToken(rawToken: string): Promise<{
 
   return { user: sessionUser, cloudCards };
 }
+
 

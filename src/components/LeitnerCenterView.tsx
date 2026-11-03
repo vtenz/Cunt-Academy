@@ -14,6 +14,7 @@ import {
   formatTimestamp,
   DAY_MS,
 } from '../utils/linguatubeLogic';
+import { requestOnDemandGeminiCoachTip } from '../services/geminiService';
 
 export type PortalSubView = 'phrasepump' | 'saved' | 'drills' | 'settings';
 export type PracticeStudioMode = 'flashcards' | 'cloze' | 'dictation' | 'builder' | 'match';
@@ -72,6 +73,8 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
   const [editBackTranslationFa, setEditBackTranslationFa] = useState<string>('');
   const [editBackCustomNotesFa, setEditBackCustomNotesFa] = useState<string>('');
   const [editBackContextFa, setEditBackContextFa] = useState<string>('');
+  const [flashcardAiLoadingId, setFlashcardAiLoadingId] = useState<string | null>(null);
+  const [flashcardAiGeneratedMap, setFlashcardAiGeneratedMap] = useState<Record<string, string>>({});
 
   // Saved Table Row Editor State
   const [editingSavedRowId, setEditingSavedRowId] = useState<string | null>(null);
@@ -689,14 +692,65 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
                               {activePumpCard.contextSentenceFa}
                             </div>
 
-                            {activePumpCard.aiExplanationFa && (
-                              <div
-                                dir="rtl"
-                                className="text-xs text-violet-200 bg-violet-950/45 border border-violet-500/30 px-3 py-1.5 rounded-lg max-w-xl"
-                              >
-                                {activePumpCard.aiExplanationFa}
-                              </div>
-                            )}
+                            {/* Strictly On-Demand Gemini AI Coach Button on Flashcard Back */}
+                            <div
+                              dir="rtl"
+                              onClick={(e) => e.stopPropagation()}
+                              className="mt-2 max-w-xl w-full flex flex-col items-center gap-2"
+                            >
+                              {flashcardAiGeneratedMap[activePumpCard.id] ? (
+                                <div
+                                  data-testid="flashcard-gemini-result"
+                                  className="text-xs text-violet-100 bg-violet-950/60 border border-violet-500/40 px-3.5 py-2.5 rounded-xl w-full text-right leading-relaxed space-y-1"
+                                >
+                                  <div className="font-black text-emerald-300 text-[11px]">
+                                    ✨ پاسخ هوش مصنوعی Google Gemini 2.5 Flash:
+                                  </div>
+                                  <div>{flashcardAiGeneratedMap[activePumpCard.id]}</div>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  data-testid="flashcard-ask-gemini-btn"
+                                  disabled={flashcardAiLoadingId === activePumpCard.id}
+                                  onClick={async () => {
+                                    setFlashcardAiLoadingId(activePumpCard.id);
+                                    try {
+                                      const res = await requestOnDemandGeminiCoachTip({
+                                        word: activePumpCard.word,
+                                        translationFa: activePumpCard.translationFa,
+                                        contextSentenceEn: activePumpCard.contextSentenceEn,
+                                        contextSentenceFa: activePumpCard.contextSentenceFa,
+                                      });
+                                      const fullNote = `${res.mnemonicFa} — ${res.usageTipFa}`;
+                                      setFlashcardAiGeneratedMap((prev) => ({
+                                        ...prev,
+                                        [activePumpCard.id]: fullNote,
+                                      }));
+                                      onUpdateCardBack(activePumpCard.id, {
+                                        aiExplanationFa: fullNote,
+                                      });
+                                    } catch (err) {
+                                      setFlashcardAiGeneratedMap((prev) => ({
+                                        ...prev,
+                                        [activePumpCard.id]:
+                                          err instanceof Error ? `⚠️ ${err.message}` : 'خطا در ارتباط با Gemini',
+                                      }));
+                                    } finally {
+                                      setFlashcardAiLoadingId(null);
+                                    }
+                                  }}
+                                  className="duo-btn duo-btn-purple px-4 py-2 text-xs"
+                                >
+                                  <span>✨</span>
+                                  <span>
+                                    {flashcardAiLoadingId === activePumpCard.id
+                                      ? 'در حال دریافت نکته از Gemini AI...'
+                                      : 'دریافت ترفند حفظ کردن با Gemini AI (فقط با کلیک شما)'}
+                                  </span>
+                                </button>
+                              )}
+                            </div>
                           </>
                         )}
                       </div>

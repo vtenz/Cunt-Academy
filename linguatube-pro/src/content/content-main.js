@@ -1362,9 +1362,7 @@
                   💾 افزودن معنی هوشمند Gemini به پشت فلش‌کارت Anki
                 </button>
               </div>`
-                : info.aiExplanation
-                  ? `<div class="lt-dict-ai-Subtle" dir="rtl">${escapeHtml(info.aiExplanation)}</div>`
-                  : `<div class="lt-dict-ai-placeholder" dir="rtl">برای دریافت معنی دقیق این کلمه یا اصطلاح در بافت همین دیالوگ ویدیو، روی دکمه بالا کلیک کنید.</div>`
+                : `<div class="lt-dict-ai-placeholder" dir="rtl">فقط در صورت نیاز شما: برای دریافت تحلیل هوشمند Gemini از نقش این کلمه در همین دیالوگ، روی دکمه بالا کلیک کنید.</div>`
             }
           </div>
 

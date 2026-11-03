@@ -42,7 +42,14 @@ import {
   clearStoredDirectSession,
   signInOrRegisterDirectEmailAccount,
   signInWithCloudSyncToken,
+  convertExtensionCardToWebCard,
+  generateExtensionSyncToken,
 } from './firebase';
+import {
+  GeminiConnectionConfig,
+  loadGeminiConfig,
+  saveGeminiConfig,
+} from './services/geminiService';
 
 const CARDS_STORAGE_KEY = 'cunt_academy_cards_v5';
 const SENTENCES_STORAGE_KEY = 'cunt_academy_sentences_v5';
@@ -87,6 +94,10 @@ export default function App() {
   const [popupBoxFilter, setPopupBoxFilter] = useState<number>(0);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [extensionBridgeConnected, setExtensionBridgeConnected] = useState<boolean>(false);
+  const [geminiConfig, setGeminiConfig] = useState<GeminiConnectionConfig>(() =>
+    loadGeminiConfig()
+  );
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', duoTheme);
@@ -204,6 +215,159 @@ export default function App() {
       // ignore
     }
   }, [savedSentences, authUser]);
+
+  // Helper to merge extension cards into website state without losing existing cards
+  const mergeIncomingExtensionCards = (rawList: Array<Record<string, unknown>>) => {
+    if (!Array.isArray(rawList) || rawList.length === 0) return;
+    setCards((prev) => {
+      const byWord = new Map<string, LeitnerCard>();
+      for (const c of prev) {
+        byWord.set(c.word.toLowerCase(), c);
+      }
+      let changed = false;
+      for (const raw of rawList) {
+        const converted = convertExtensionCardToWebCard(raw);
+        if (!converted) continue;
+        const key = converted.word.toLowerCase();
+        const existing = byWord.get(key);
+        if (
+          !existing ||
+          (converted.lastReviewedAt || 0) > (existing.lastReviewedAt || 0)
+        ) {
+          byWord.set(key, converted);
+          changed = true;
+        }
+      }
+      if (!changed) return prev;
+      return Array.from(byWord.values()).sort(
+        (a, b) => (b.lastReviewedAt || b.createdAt || 0) - (a.lastReviewedAt || a.createdAt || 0)
+      );
+    });
+  };
+
+  // Real-Time Two-Way Bridge with Cunt Academy Browser Extension (`site-bridge.js`) & `#ca_sync=` URL Hash
+  useEffect(() => {
+    const consumeHashSyncIfPresent = () => {
+      try {
+        const hash = window.location.hash || '';
+        const match = hash.match(/[#&](?:ca_sync|ext_sync)=([^&]+)/);
+        if (match && match[1]) {
+          const decoded = JSON.parse(decodeURIComponent(atob(decodeURIComponent(match[1]))));
+          if (decoded) {
+            if (Array.isArray(decoded.cards)) {
+              mergeIncomingExtensionCards(decoded.cards);
+            }
+            if (decoded.email && !authUser) {
+              const directUser = signInOrRegisterDirectEmailAccount(
+                decoded.email,
+                'cunt_academy_default',
+                decoded.displayName
+              );
+              setAuthUser(directUser);
+            }
+            if (decoded.geminiApiKey) {
+              const nextCfg = saveGeminiConfig({
+                apiKey: decoded.geminiApiKey,
+                verified: true,
+                verifiedAt: Date.now(),
+                model: 'gemini-2.5-flash',
+                statusMessageFa: 'متصل به Google Gemini 2.5 Flash (سینک شده با اکستنشن)',
+              });
+              setGeminiConfig(nextCfg);
+            }
+            setSyncStatus('synced');
+            window.history.replaceState(
+              null,
+              '',
+              window.location.pathname + window.location.search
+            );
+          }
+        }
+      } catch {
+        // ignore invalid hash
+      }
+    };
+
+    consumeHashSyncIfPresent();
+    window.addEventListener('hashchange', consumeHashSyncIfPresent);
+
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || data.source !== 'CUNT_ACADEMY_EXTENSION') return;
+      setExtensionBridgeConnected(true);
+
+      if (data.type === 'EXT_STATE_PUSH' && data.payload) {
+        const { cards: extCards, cloudAccount, geminiApiKey } = data.payload;
+        if (Array.isArray(extCards) && extCards.length > 0) {
+          mergeIncomingExtensionCards(extCards);
+        }
+        if (cloudAccount && cloudAccount.email && !authUser) {
+          const directUser = signInOrRegisterDirectEmailAccount(
+            cloudAccount.email,
+            'cunt_academy_default',
+            cloudAccount.displayName
+          );
+          setAuthUser(directUser);
+        }
+        if (geminiApiKey && typeof geminiApiKey === 'string' && geminiApiKey.length >= 12) {
+          const currentCfg = loadGeminiConfig();
+          if (currentCfg.apiKey !== geminiApiKey) {
+            const updatedCfg = saveGeminiConfig({
+              apiKey: geminiApiKey,
+              verified: true,
+              verifiedAt: Date.now(),
+              model: 'gemini-2.5-flash',
+              statusMessageFa: 'متصل به Google Gemini 2.5 Flash (سینک شده با اکستنشن)',
+            });
+            setGeminiConfig(updatedCfg);
+          }
+        }
+        setSyncStatus('synced');
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+    // Request initial sync from extension content script if installed
+    window.postMessage(
+      {
+        source: 'CUNT_ACADEMY_WEBSITE',
+        type: 'WEB_REQUEST_SYNC',
+      },
+      '*'
+    );
+
+    return () => {
+      window.removeEventListener('hashchange', consumeHashSyncIfPresent);
+      window.removeEventListener('message', onMessage);
+    };
+  }, [authUser]);
+
+  // Push website state changes to extension bridge whenever cards, authUser, or geminiConfig updates
+  useEffect(() => {
+    try {
+      window.postMessage(
+        {
+          source: 'CUNT_ACADEMY_WEBSITE',
+          type: 'WEB_STATE_PUSH',
+          payload: {
+            cards: cards.slice(0, 250),
+            user: authUser
+              ? {
+                  uid: authUser.uid,
+                  email: authUser.email,
+                  displayName: authUser.displayName,
+                  syncToken: generateExtensionSyncToken(authUser, cards),
+                }
+              : null,
+            geminiApiKey: geminiConfig.verified ? geminiConfig.apiKey : '',
+          },
+        },
+        '*'
+      );
+    } catch {
+      // ignore
+    }
+  }, [cards, authUser, geminiConfig]);
 
   // Firebase Auth & Real-Time Firestore Subscription (with fallback to direct client session)
   useEffect(() => {
@@ -325,7 +489,9 @@ export default function App() {
       const { user, cloudCards } = await signInWithCloudSyncToken(token);
       setAuthUser(user);
       if (cloudCards.length > 0) {
-        setCards(cloudCards);
+        mergeIncomingExtensionCards(
+          cloudCards as unknown as Array<Record<string, unknown>>
+        );
       }
       setSyncStatus('synced');
     } catch (err) {
@@ -350,14 +516,42 @@ export default function App() {
   };
 
   const handleForcePushLocalToCloud = async () => {
-    if (!authUser) return;
     try {
       setSyncStatus('syncing');
       setSyncError(null);
-      localStorage.setItem(`${CARDS_STORAGE_KEY}_${authUser.uid}`, JSON.stringify(cards));
-      localStorage.setItem(
-        `${SENTENCES_STORAGE_KEY}_${authUser.uid}`,
-        JSON.stringify(savedSentences)
+      if (authUser) {
+        localStorage.setItem(`${CARDS_STORAGE_KEY}_${authUser.uid}`, JSON.stringify(cards));
+        localStorage.setItem(
+          `${SENTENCES_STORAGE_KEY}_${authUser.uid}`,
+          JSON.stringify(savedSentences)
+        );
+      }
+      // Push to extension bridge immediately
+      window.postMessage(
+        {
+          source: 'CUNT_ACADEMY_WEBSITE',
+          type: 'WEB_STATE_PUSH',
+          payload: {
+            cards: cards.slice(0, 250),
+            user: authUser
+              ? {
+                  uid: authUser.uid,
+                  email: authUser.email,
+                  displayName: authUser.displayName,
+                  syncToken: generateExtensionSyncToken(authUser, cards),
+                }
+              : null,
+            geminiApiKey: geminiConfig.verified ? geminiConfig.apiKey : '',
+          },
+        },
+        '*'
+      );
+      window.postMessage(
+        {
+          source: 'CUNT_ACADEMY_WEBSITE',
+          type: 'WEB_REQUEST_SYNC',
+        },
+        '*'
       );
       if (auth.currentUser) {
         await ensureUserProfileDoc(auth.currentUser, settings);
@@ -827,7 +1021,7 @@ export default function App() {
             </button>
           </div>
 
-          {/* Right: Quick Actions + Toolbar Popup + Cloud Account + Theme Switcher */}
+          {/* Right: Quick Actions + Gemini AI Status + Toolbar Popup + Cloud Account + Theme Switcher */}
           <div className="flex flex-wrap items-center gap-2.5 text-xs">
             {/* Quick Start Duo Practice CTA */}
             <button
@@ -840,6 +1034,22 @@ export default function App() {
               <span>تمرین دولینگویی</span>
             </button>
 
+            {/* Gemini AI Connection & Verification Status Button */}
+            <button
+              type="button"
+              data-testid="header-gemini-status-btn"
+              onClick={() => setCloudModalOpen(true)}
+              className={`duo-btn px-3.5 py-1.5 text-xs ${
+                geminiConfig.verified ? 'duo-btn-purple' : 'duo-btn-neutral'
+              }`}
+              title="مدیریت و تایید کلید هوش مصنوعی Google Gemini 2.5 Flash (بدون مصرف خودکار)"
+            >
+              <span>✨</span>
+              <span>
+                {geminiConfig.verified ? 'Gemini AI متصل ✓' : 'اتصال کلید Gemini'}
+              </span>
+            </button>
+
             {/* Browser Toolbar Extension Popup Trigger (Compact Leitner Box in Corner) */}
             <button
               type="button"
@@ -848,7 +1058,7 @@ export default function App() {
                 setToolbarPopupOpen((prev) => !prev);
                 setPopupFlipped(false);
               }}
-              className="duo-btn duo-btn-purple px-3.5 py-1.5 text-xs"
+              className="duo-btn duo-btn-blue px-3.5 py-1.5 text-xs"
               title="مشاهده پاپ‌آپ جمع‌وجور جعبه لایتنر بالای مرورگر"
             >
               <span>📦</span>
@@ -865,9 +1075,7 @@ export default function App() {
               }`}
             >
               <span>☁</span>
-              <span>
-                {authUser ? authUser.email : 'ورود با جیمیل'}
-              </span>
+              <span>{authUser ? authUser.email : 'ورود با جیمیل'}</span>
             </button>
 
             {/* Duolingo Official Dual Theme Switcher (Snow Light / Dark Slate) */}
@@ -1072,7 +1280,7 @@ export default function App() {
                 {/* Bottom Direct Website Link & Full Portal Footer */}
                 <div className="p-3 duo-surface-secondary border-t-2 duo-border-color flex items-center gap-2">
                   <a
-                    href="https://ais-pre-kpvvaywqip7q5ueoy2ov3t-258196294078.us-east1.run.app"
+                    href="https://cunt-academy.netlify.app/"
                     target="_blank"
                     rel="noopener noreferrer"
                     data-testid="popup-direct-website-link"
@@ -1152,21 +1360,24 @@ export default function App() {
         </main>
       </div>
 
-      {/* Cloud Account, Google Login & Public Domain Modal */}
+      {/* Cloud Account, Google Login, Gemini AI & Public Domain Modal */}
       <CloudAccountModal
         isOpen={cloudModalOpen}
         onClose={() => setCloudModalOpen(false)}
         user={authUser}
+        cards={cards}
         authLoading={authLoading}
         syncStatus={syncStatus}
         syncError={syncError}
         cardsCount={cards.length}
         sentencesCount={savedSentences.length}
+        extensionBridgeConnected={extensionBridgeConnected}
         onSignInGoogle={handleSignInGoogle}
         onSignInDirectEmail={handleSignInDirectEmail}
         onSignInSyncToken={handleSignInSyncToken}
         onSignOutGoogle={handleSignOutGoogle}
         onForcePushLocalToCloud={handleForcePushLocalToCloud}
+        onGeminiConfigChange={(cfg) => setGeminiConfig(cfg)}
       />
     </div>
   );

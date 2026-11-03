@@ -21,6 +21,10 @@ import {
   detectCollocationAtWord,
   DetectedCollocation,
 } from '../utils/linguatubeLogic';
+import {
+  requestOnDemandGeminiContextualAnalysis,
+  GeminiContextualAnalysis,
+} from '../services/geminiService';
 
 interface PlayerSimulatorViewProps {
   cards: LeitnerCard[];
@@ -57,13 +61,7 @@ interface LiveLookupResult {
   freqTag: string;
 }
 
-interface GeminiContextualResult {
-  contextualMeaningFa: string;
-  posInSentence: string;
-  grammarNuanceFa: string;
-  allMeaningsByPos: Array<{ pos: string; meaningsFa: string[] }>;
-  collocationOrIdiom?: string;
-}
+type GeminiContextualResult = GeminiContextualAnalysis;
 
 export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
   cards,
@@ -472,74 +470,22 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
     };
   }, [selectedPhrase, liveDictCache]);
 
-  const buildClientSideContextualFallback = (): GeminiContextualResult => {
-    const primaryPos =
-      currentDictEntry.posEntries?.[0]?.pos ||
-      (/\s+/.test(currentDictEntry.word) ? 'phrasal verb / idiom' : 'word');
-    const allMeaningsByPos =
-      currentDictEntry.posEntries && currentDictEntry.posEntries.length > 0
-        ? currentDictEntry.posEntries.map((entry) => ({
-            pos: entry.pos,
-            meaningsFa: entry.terms,
-          }))
-        : [
-            {
-              pos: primaryPos,
-              meaningsFa:
-                currentDictEntry.miniMeaningsFa.length > 0
-                  ? currentDictEntry.miniMeaningsFa
-                  : [currentDictEntry.translationFa],
-            },
-          ];
-
-    return {
-      contextualMeaningFa: currentDictEntry.translationFa,
-      posInSentence: primaryPos,
-      grammarNuanceFa:
-        currentDictEntry.aiExplanationFa ||
-        buildContextualGrammarAnalysisFa(
-          currentDictEntry.word,
-          activeCue.textEn,
-          primaryPos,
-          currentDictEntry.translationFa
-        ),
-      allMeaningsByPos,
-      collocationOrIdiom: /\s+/.test(currentDictEntry.word) ? currentDictEntry.word : '',
-    };
-  };
-
   const handleRequestGeminiContextualAi = async () => {
     const key = `${currentDictEntry.word}::${activeCue.id}`;
     setGeminiLoading(true);
     setGeminiError(null);
     try {
-      const res = await fetch('/api/gemini/contextual-explain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          wordOrPhrase: currentDictEntry.word,
-          sentenceEn: activeCue.textEn,
-          sentenceFa: activeCue.textFa,
-        }),
+      const analysis = await requestOnDemandGeminiContextualAnalysis({
+        wordOrPhrase: currentDictEntry.word,
+        sentenceEn: activeCue.textEn,
+        sentenceFa: activeCue.textFa,
       });
-      const contentType = res.headers.get('content-type') || '';
-      if (res.ok && contentType.includes('application/json')) {
-        const data = await res.json();
-        setGeminiResultMap((prev) => ({
-          ...prev,
-          [key]: data as GeminiContextualResult,
-        }));
-      } else {
-        setGeminiResultMap((prev) => ({
-          ...prev,
-          [key]: buildClientSideContextualFallback(),
-        }));
-      }
-    } catch {
       setGeminiResultMap((prev) => ({
         ...prev,
-        [key]: buildClientSideContextualFallback(),
+        [key]: analysis,
       }));
+    } catch (err) {
+      setGeminiError(err instanceof Error ? err.message : String(err));
     } finally {
       setGeminiLoading(false);
     }
@@ -1067,36 +1013,51 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                     ))}
                   </div>
 
-                  {/* ON-DEMAND LEXA AI / GEMINI CONTEXTUAL EXPLANATION SECTION */}
+                  {/* STRICTLY ON-DEMAND GEMINI AI CONTEXTUAL EXPLANATION SECTION */}
                   <div
                     dir="rtl"
                     data-testid="lexa-ai-contextual-box"
-                    className="p-2.5 rounded-xl bg-gradient-to-br from-violet-950/60 via-[#151828] to-emerald-950/40 border border-violet-500/40 space-y-2"
+                    className="p-3 rounded-xl bg-gradient-to-br from-violet-950/60 via-[#151828] to-emerald-950/40 border border-violet-500/40 space-y-2"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] font-extrabold text-violet-200 flex items-center gap-1">
                         <span>✨</span>
-                        <span>Lexa AI (Gemini) — معنی دقیق در این جمله</span>
+                        <span>تحلیل هوشمند Google Gemini 2.5 Flash (فقط با کلیک شما)</span>
                       </span>
                       <button
                         type="button"
                         data-testid="ask-gemini-context-btn"
                         disabled={geminiLoading}
                         onClick={handleRequestGeminiContextualAi}
-                        className="px-2.5 py-1 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-[11px] font-bold shadow"
+                        className="px-3 py-1.5 rounded-lg bg-[#CE82FF] hover:bg-[#b968f0] disabled:opacity-50 text-white text-[11px] font-black shadow cursor-pointer"
                       >
-                        {geminiLoading ? 'در حال تحلیل...' : '✨ تحلیل هوشمند در این جمله'}
+                        {geminiLoading
+                          ? 'در حال دریافت پاسخ از Gemini...'
+                          : '✨ تحلیل هوشمند در این جمله'}
                       </button>
                     </div>
 
                     {activeGeminiResult ? (
-                      <div className="space-y-1.5 text-[11px] pt-1 border-t border-white/10">
+                      <div
+                        data-testid="gemini-context-result-panel"
+                        className="space-y-2 text-[11px] pt-1.5 border-t border-white/10"
+                      >
                         <div className="text-emerald-300 font-extrabold text-xs">
                           🎯 معنی دقیق در این دیالوگ: «{activeGeminiResult.contextualMeaningFa}» ({activeGeminiResult.posInSentence})
                         </div>
-                        <p className="text-slate-200 leading-relaxed">
+                        {activeGeminiResult.sentenceTranslationFa && (
+                          <div className="text-amber-200 font-bold">
+                            📝 ترجمه روان دیالوگ: «{activeGeminiResult.sentenceTranslationFa}»
+                          </div>
+                        )}
+                        <p className="text-slate-100 leading-relaxed font-medium">
                           {activeGeminiResult.grammarNuanceFa}
                         </p>
+                        {activeGeminiResult.mnemonicFa && (
+                          <div className="p-2 rounded-lg bg-violet-500/15 border border-violet-400/30 text-violet-200 font-bold leading-relaxed">
+                            {activeGeminiResult.mnemonicFa}
+                          </div>
+                        )}
                         {activeGeminiResult.allMeaningsByPos &&
                           activeGeminiResult.allMeaningsByPos.length > 0 && (
                             <div className="space-y-1 pt-1">
@@ -1115,21 +1076,23 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                               'learning',
                               currentDictEntry.word,
                               activeGeminiResult.contextualMeaningFa,
-                              activeGeminiResult.grammarNuanceFa
+                              `${activeGeminiResult.grammarNuanceFa} ${activeGeminiResult.mnemonicFa || ''}`.trim()
                             )
                           }
                           className="w-full mt-1 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px]"
                         >
-                          💾 افزودن معنی هوشمند Gemini به پشت فلش‌کارت Anki
+                          💾 افزودن تحلیل هوشمند Gemini به پشت فلش‌کارت Anki
                         </button>
                       </div>
                     ) : (
-                      <div className="text-[11px] text-violet-200/90 leading-relaxed">
-                        {currentDictEntry.aiExplanationFa}
-                        {geminiError && (
-                          <div className="mt-1.5 text-amber-300 font-semibold">
-                            ⚠️ {geminiError} (کلید GEMINI_API_KEY از بخش Settings &gt; Secrets خوانده می‌شود)
-                          </div>
+                      <div className="text-[11px] text-slate-300 leading-relaxed">
+                        {geminiError ? (
+                          <div className="text-rose-300 font-bold">⚠️ {geminiError}</div>
+                        ) : (
+                          <span>
+                            برای دریافت معنی دقیق «{currentDictEntry.word}» در این دیالوگ، تحلیل گرامری و تکنیک حفظ کردن با هوش مصنوعی گوگل، روی دکمه{' '}
+                            <strong className="text-violet-300">«✨ تحلیل هوشمند در این جمله»</strong> کلیک کنید. (بدون کلیک شما هیچ مصرفی از API انجام نمی‌شود).
+                          </span>
                         )}
                       </div>
                     )}

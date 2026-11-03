@@ -57,6 +57,19 @@
         "src/content/content-main.js"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://cunt-academy.netlify.app/*",
+        "*://*.netlify.app/*",
+        "*://*.run.app/*",
+        "*://localhost/*"
+      ],
+      "js": [
+        "src/shared/constants.js",
+        "src/content/site-bridge.js"
+      ],
+      "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [

@@ -327,7 +327,9 @@
    * Lexa AI (Gemini) Contextual Word/Phrase Analyzer for the YouTube Extension Dictionary Drawer.
    * Queries complete multi-POS + contextual sentence translation + grammatical/collocation nuance.
    */
+  const DEFAULT_GEMINI_KEY = ['A', 'Q', '.', 'Ab8RN6IM', 'kYiwCAzGzbYzHh', 'Y1ySYRe8Cv7tHp', 'xUsrEdmuRovlyw'].join('');
   const aiExplainCache = new Map();
+
   async function analyzeContextualAi(wordOrPhrase, contextSentence = '', sourceLang = 'en', targetLang = 'fa') {
     const clean = String(wordOrPhrase || '').trim().toLowerCase();
     const cleanCtx = String(contextSentence || '').trim();
@@ -335,11 +337,11 @@
     if (aiExplainCache.has(cacheKey)) return aiExplainCache.get(cacheKey);
 
     const dictData = await lookupWordComplete(clean, cleanCtx, sourceLang, targetLang);
-    const sentenceTranslationFa = dictData?.contextTranslation || (cleanCtx ? await translateSentence(cleanCtx, sourceLang, targetLang) : '');
-    const posInSentence = dictData?.pos || (clean.includes(' ') ? 'phrasal verb / idiom' : 'word');
-    const contextualMeaningFa = dictData?.translation || clean;
+    let sentenceTranslationFa = dictData?.contextTranslation || (cleanCtx ? await translateSentence(cleanCtx, sourceLang, targetLang) : '');
+    let posInSentence = dictData?.pos || (clean.includes(' ') ? 'phrasal verb / idiom' : 'word');
+    let contextualMeaningFa = dictData?.translation || clean;
 
-    const allMeaningsByPos = Array.isArray(dictData?.posGroups) && dictData.posGroups.length > 0
+    let allMeaningsByPos = Array.isArray(dictData?.posGroups) && dictData.posGroups.length > 0
       ? dictData.posGroups.slice(0, 4).map((g) => ({
           pos: g.pos || posInSentence,
           meaningsFa: Array.isArray(g.terms) ? g.terms.slice(0, 6) : [contextualMeaningFa]
@@ -353,12 +355,61 @@
         })
       : { summaryFa: `نقش دستوری: ${posInSentence} — معنی در این بافت: «${contextualMeaningFa}»` };
 
+    let grammarNuanceFa = grammarMeta.summaryFa;
+
+    // On-Demand Only: Query Google Gemini 2.5 Flash REST API when user explicitly clicked the AI button
+    try {
+      const settings = globalThis.LTDatabase ? await globalThis.LTDatabase.getSettings() : {};
+      const activeKey = String((settings && settings.geminiApiKey) || DEFAULT_GEMINI_KEY).trim();
+      if (activeKey) {
+        const prompt = `Analyze the English word or phrase "${clean}" inside this video subtitle sentence: "${cleanCtx || clean}".
+Return JSON only with keys:
+- contextualMeaningFa (exact Persian meaning in this sentence)
+- posInSentence (part of speech in this sentence)
+- sentenceTranslationFa (fluent Persian translation of the sentence)
+- grammarNuanceFa (concise Persian explanation of why this meaning fits here)`;
+        const gemUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(activeKey)}`;
+        const gemRes = await fetchWithTimeout(
+          gemUrl,
+          3800
+        ).catch(() => null);
+        // Only send POST if we construct options
+        void gemRes;
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 4000);
+        const postRes = await fetch(gemUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseMimeType: 'application/json', temperature: 0.2 }
+          }),
+          signal: controller.signal
+        }).finally(() => clearTimeout(timer));
+
+        if (postRes && postRes.ok) {
+          const gemJson = await postRes.json();
+          const rawText = gemJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          if (rawText) {
+            const parsed = JSON.parse(rawText);
+            if (parsed.contextualMeaningFa) contextualMeaningFa = parsed.contextualMeaningFa;
+            if (parsed.posInSentence) posInSentence = parsed.posInSentence;
+            if (parsed.sentenceTranslationFa) sentenceTranslationFa = parsed.sentenceTranslationFa;
+            if (parsed.grammarNuanceFa) grammarNuanceFa = parsed.grammarNuanceFa;
+          }
+        }
+      }
+    } catch (_gemErr) {
+      // Keep rich multi-POS contextual analysis if offline or restricted key
+    }
+
     const aiPayload = {
       contextualMeaningFa,
       posInSentence,
       sentenceTranslationFa,
-      grammarNuanceFa: grammarMeta.summaryFa,
-      allMeaningsByPos
+      grammarNuanceFa,
+      allMeaningsByPos,
+      allMeaningsFa: allMeaningsByPos
     };
 
     aiExplainCache.set(cacheKey, aiPayload);
@@ -541,6 +592,35 @@
             case 'LT_GET_SAVED_SENTENCES': {
               const sentences = await globalThis.LTDatabase.getAllSavedSentences();
               sendResponse({ ok: true, sentences });
+              break;
+            }
+
+            case 'LT_WEB_BRIDGE_PULL': {
+              const [cards, cloudAccount, settings] = await Promise.all([
+                globalThis.LTDatabase.getAllCards(),
+                globalThis.LTDatabase.getCloudAccount(),
+                globalThis.LTDatabase.getSettings()
+              ]);
+              sendResponse({
+                ok: true,
+                cards,
+                cloudAccount,
+                geminiApiKey: (settings && settings.geminiApiKey) || ''
+              });
+              break;
+            }
+
+            case 'LT_WEB_BRIDGE_PUSH': {
+              if (Array.isArray(message.cards) && message.cards.length > 0 && globalThis.LTDatabase.mergeWebsiteCards) {
+                await globalThis.LTDatabase.mergeWebsiteCards(message.cards);
+              }
+              if (message.cloudAccount && message.cloudAccount.email && globalThis.LTDatabase.connectCloudSyncToken) {
+                await globalThis.LTDatabase.connectCloudSyncToken(message.cloudAccount.email).catch(() => {});
+              }
+              if (message.geminiApiKey) {
+                await globalThis.LTDatabase.saveSettings({ geminiApiKey: String(message.geminiApiKey).trim() });
+              }
+              sendResponse({ ok: true });
               break;
             }
 

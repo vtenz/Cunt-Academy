@@ -493,80 +493,208 @@
 
   async function syncWithCloudAccount() {
     const account = await getCloudAccount();
-    if (!account || !account.uid) throw new Error('اکانت جیمیل متصل نیست');
-    const idToken = await fetchFreshIdToken(account);
-    if (!idToken) throw new Error('توکن اتصال منقضی شده؛ لطفاً کد جدید را از سایت کپی کنید');
+    if (!account || (!account.uid && !account.email)) {
+      throw new Error('ابتدا جیمیل خود یا کد اتصال سایت را وارد کنید');
+    }
 
-    const uid = sanitizeCloudId(account.uid);
-    const baseUrl = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(account.projectId)}/databases/${encodeURIComponent(account.dbId)}/documents`;
-    const listUrl = `${baseUrl}/userProfiles/${encodeURIComponent(uid)}/cards?pageSize=250`;
+    const idToken = String(account.rt || '').startsWith('direct_') ? null : await fetchFreshIdToken(account);
+    if (idToken && account.projectId && account.dbId) {
+      try {
+        const uid = sanitizeCloudId(account.uid);
+        const baseUrl = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(account.projectId)}/databases/${encodeURIComponent(account.dbId)}/documents`;
+        const listUrl = `${baseUrl}/userProfiles/${encodeURIComponent(uid)}/cards?pageSize=250`;
 
-    const res = await fetch(listUrl, {
-      headers: { Authorization: `Bearer ${idToken}` }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const docs = Array.isArray(data.documents) ? data.documents : [];
-      const cardsMap = await readStorageKey(CARDS_KEY, {});
-      for (const docItem of docs) {
-        const f = docItem.fields || {};
-        const word = f.word?.stringValue || '';
-        const clean = global.LTConstants ? global.LTConstants.normalizeWord(word) : word.toLowerCase().trim();
-        if (!clean) continue;
-        cardsMap[clean] = {
-          id: clean,
-          word,
-          lemma: f.lemma?.stringValue || clean,
-          translation: f.translationFa?.stringValue || '',
-          customNotes: f.customNotesFa?.stringValue || '',
-          phonetic: f.phonetic?.stringValue || '',
-          contextSentence: f.contextSentenceEn?.stringValue || '',
-          contextTranslation: f.contextSentenceFa?.stringValue || '',
-          aiExplanation: f.aiExplanationFa?.stringValue || '',
-          videoId: f.videoId?.stringValue || '',
-          videoTitle: f.videoTitle?.stringValue || 'YouTube Video',
-          cefr: f.cefr?.stringValue || 'B1',
-          freqTag: f.freqTag?.stringValue || 'tag 2k',
-          rank: Number(f.rank?.integerValue || 1800),
-          status: f.status?.stringValue || 'learning',
-          pumpStage: f.pumpStage?.stringValue || 'marked',
-          ankiState: f.ankiState?.stringValue || 'new',
-          intervalDays: Number(f.intervalDays?.integerValue || 0),
-          easeFactor: Number(f.easeFactor?.doubleValue || f.easeFactor?.integerValue || 2.5),
-          box: Number(f.box?.integerValue || 1),
-          leitnerBox: Number(f.box?.integerValue || 1),
-          reviewCount: Number(f.reviewCount?.integerValue || 0),
-          lapseCount: Number(f.lapseCount?.integerValue || 0),
-          nextReviewAt: Number(f.nextReviewAt?.integerValue || Date.now()),
-          lastReviewedAt: Number(f.lastReviewedAt?.integerValue || Date.now()),
-          updatedAt: Date.now()
-        };
+        const res = await fetch(listUrl, {
+          headers: { Authorization: `Bearer ${idToken}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const docs = Array.isArray(data.documents) ? data.documents : [];
+          const cardsMap = await readStorageKey(CARDS_KEY, {});
+          for (const docItem of docs) {
+            const f = docItem.fields || {};
+            const word = f.word?.stringValue || '';
+            const clean = global.LTConstants ? global.LTConstants.normalizeWord(word) : word.toLowerCase().trim();
+            if (!clean) continue;
+            cardsMap[clean] = {
+              id: clean,
+              word,
+              lemma: f.lemma?.stringValue || clean,
+              translation: f.translationFa?.stringValue || '',
+              customNotes: f.customNotesFa?.stringValue || '',
+              phonetic: f.phonetic?.stringValue || '',
+              contextSentence: f.contextSentenceEn?.stringValue || '',
+              contextTranslation: f.contextSentenceFa?.stringValue || '',
+              aiExplanation: f.aiExplanationFa?.stringValue || '',
+              videoId: f.videoId?.stringValue || '',
+              videoTitle: f.videoTitle?.stringValue || 'YouTube Video',
+              cefr: f.cefr?.stringValue || 'B1',
+              freqTag: f.freqTag?.stringValue || 'tag 2k',
+              rank: Number(f.rank?.integerValue || 1800),
+              status: f.status?.stringValue || 'learning',
+              pumpStage: f.pumpStage?.stringValue || 'marked',
+              ankiState: f.ankiState?.stringValue || 'new',
+              intervalDays: Number(f.intervalDays?.integerValue || 0),
+              easeFactor: Number(f.easeFactor?.doubleValue || f.easeFactor?.integerValue || 2.5),
+              box: Number(f.box?.integerValue || 1),
+              leitnerBox: Number(f.box?.integerValue || 1),
+              reviewCount: Number(f.reviewCount?.integerValue || 0),
+              lapseCount: Number(f.lapseCount?.integerValue || 0),
+              nextReviewAt: Number(f.nextReviewAt?.integerValue || Date.now()),
+              lastReviewedAt: Number(f.lastReviewedAt?.integerValue || Date.now()),
+              updatedAt: Date.now()
+            };
+          }
+          await writeStorageKey(CARDS_KEY, cardsMap);
+        }
+
+        const localCards = await getAllCards();
+        for (const c of localCards.slice(0, 60)) {
+          await pushCardToCloud(c).catch(() => {});
+        }
+      } catch (_cloudErr) {
+        // Ignore network/token errors and continue with direct sync token & bridge
       }
-      await writeStorageKey(CARDS_KEY, cardsMap);
     }
 
-    const localCards = await getAllCards();
-    for (const c of localCards.slice(0, 60)) {
-      await pushCardToCloud(c).catch(() => {});
+    const finalCards = await getAllCards();
+    return {
+      ok: true,
+      count: finalCards.length,
+      email: account.email || 'user@gmail.com'
+    };
+  }
+
+  async function mergeWebsiteCards(incomingList) {
+    if (!Array.isArray(incomingList) || incomingList.length === 0) return 0;
+    const cardsMap = await readStorageKey(CARDS_KEY, {});
+    let mergedCount = 0;
+    for (const raw of incomingList) {
+      const word = String(raw.word || raw.w || '').trim();
+      const clean = global.LTConstants ? global.LTConstants.normalizeWord(word) : word.toLowerCase();
+      if (!clean) continue;
+      const existing = cardsMap[clean] || {};
+      const box = Math.min(6, Math.max(1, Number(raw.box || raw.leitnerBox || raw.b || existing.box || 1)));
+      cardsMap[clean] = Object.assign({}, existing, {
+        id: clean,
+        word: word || existing.word || clean,
+        lemma: raw.lemma || raw.l || existing.lemma || clean,
+        translation: raw.translation || raw.translationFa || raw.t || existing.translation || word,
+        customNotes: raw.customNotes || raw.customNotesFa || raw.n || existing.customNotes || '',
+        phonetic: raw.phonetic || raw.p || existing.phonetic || '',
+        contextSentence: raw.contextSentence || raw.contextSentenceEn || raw.cs || existing.contextSentence || '',
+        contextTranslation: raw.contextTranslation || raw.contextSentenceFa || raw.cf || existing.contextTranslation || '',
+        aiExplanation: raw.aiExplanation || raw.aiExplanationFa || existing.aiExplanation || '',
+        cefr: raw.cefr || raw.c || existing.cefr || 'B1',
+        freqTag: raw.freqTag || existing.freqTag || 'tag 2k',
+        status: raw.status || raw.s || existing.status || (box >= 5 ? 'known' : 'learning'),
+        ankiState: raw.ankiState || raw.a || existing.ankiState || 'new',
+        intervalDays: Number(raw.intervalDays ?? raw.iv ?? existing.intervalDays ?? 0),
+        box,
+        leitnerBox: box,
+        easeFactor: Number(raw.easeFactor || existing.easeFactor || 2.5),
+        nextReviewAt: Number(raw.nextReviewAt || raw.nr || existing.nextReviewAt || Date.now()),
+        updatedAt: Date.now()
+      });
+      mergedCount++;
     }
-    return true;
+    await writeStorageKey(CARDS_KEY, cardsMap);
+    return mergedCount;
   }
 
   async function connectCloudSyncToken(rawToken) {
     const clean = String(rawToken || '').trim();
-    if (!clean) throw new Error('کد اتصال خالی است');
+    if (!clean) throw new Error('کد اتصال یا آدرس جیمیل خالی است');
+
+    // Case 1: User typed their Gmail address directly (e.g. ali@gmail.com)
+    if (clean.includes('@') || (!clean.startsWith('eyJ') && clean.length < 48)) {
+      const normalizedEmail = clean.includes('@') ? clean.toLowerCase() : `${clean.toLowerCase()}@gmail.com`;
+      const safeUid = 'acct_' + normalizedEmail.replace(/[^a-z0-9]/g, '_').slice(0, 48);
+      const directAccount = {
+        v: 2,
+        uid: safeUid,
+        email: normalizedEmail,
+        name: normalizedEmail.split('@')[0],
+        rt: `direct_${safeUid}`,
+        nonExpiring: true,
+        ts: Date.now()
+      };
+      await writeStorageKey(CLOUD_ACCOUNT_KEY, directAccount);
+      return directAccount;
+    }
+
+    // Case 2: Base64 Sync Key copied from https://cunt-academy.netlify.app/
     let parsed = null;
     try {
       parsed = JSON.parse(decodeURIComponent(atob(clean)));
-    } catch (_e) {
-      throw new Error('فرمت کد اتصال معتبر نیست');
+    } catch (_e1) {
+      try {
+        parsed = JSON.parse(atob(clean));
+      } catch (_e2) {
+        throw new Error('فرمت کد اتصال معتبر نیست؛ می‌توانید مستقیماً آدرس جیمیل خود را وارد کنید');
+      }
     }
-    if (!parsed || !parsed.uid || !parsed.rt || !parsed.apiKey) {
-      throw new Error('کد اتصال ناقص است');
+
+    if (!parsed || (!parsed.uid && !parsed.email)) {
+      throw new Error('کد اتصال معتبر نیست');
     }
-    await writeStorageKey(CLOUD_ACCOUNT_KEY, parsed);
-    await syncWithCloudAccount();
-    return parsed;
+
+    const normalizedEmail = String(parsed.email || 'user@gmail.com').toLowerCase().trim();
+    const safeUid = parsed.uid || ('acct_' + normalizedEmail.replace(/[^a-z0-9]/g, '_').slice(0, 48));
+    const accountToSave = Object.assign({}, parsed, {
+      v: 2,
+      uid: safeUid,
+      email: normalizedEmail,
+      rt: parsed.rt || `direct_${safeUid}`,
+      nonExpiring: true,
+      ts: Date.now()
+    });
+
+    await writeStorageKey(CLOUD_ACCOUNT_KEY, accountToSave);
+    if (Array.isArray(parsed.cards) && parsed.cards.length > 0) {
+      await mergeWebsiteCards(parsed.cards);
+    }
+    await syncWithCloudAccount().catch(() => {});
+    return accountToSave;
+  }
+
+  async function generatePopupSyncToken() {
+    const account = (await getCloudAccount()) || {
+      uid: 'acct_cunt_academy_ext',
+      email: 'user@gmail.com',
+      name: 'Cunt Academy User',
+      rt: 'direct_acct_cunt_academy_ext'
+    };
+    const allCards = await getAllCards();
+    const compactCards = allCards.slice(0, 150).map((c) => ({
+      w: c.word,
+      l: c.lemma || c.word,
+      t: c.translation || c.word,
+      n: c.customNotes || '',
+      p: c.phonetic || '',
+      c: c.cefr || 'B1',
+      cs: c.contextSentence || '',
+      cf: c.contextTranslation || '',
+      b: Number(c.box || c.leitnerBox || 1),
+      s: c.status || 'learning',
+      a: c.ankiState || 'new',
+      iv: Number(c.intervalDays || 0),
+      nr: Number(c.nextReviewAt || Date.now())
+    }));
+    const payload = {
+      v: 2,
+      uid: account.uid,
+      email: account.email || 'user@gmail.com',
+      name: account.name || (account.email ? account.email.split('@')[0] : 'User'),
+      rt: account.rt || `direct_${account.uid}`,
+      projectId: account.projectId || '',
+      apiKey: account.apiKey || '',
+      dbId: account.dbId || '',
+      nonExpiring: true,
+      cards: compactCards,
+      ts: Date.now()
+    };
+    return btoa(encodeURIComponent(JSON.stringify(payload)));
   }
 
   global.LTDatabase = {
@@ -589,6 +717,8 @@
     getCloudAccount,
     connectCloudSyncToken,
     disconnectCloudAccount,
-    syncWithCloudAccount
+    syncWithCloudAccount,
+    mergeWebsiteCards,
+    generatePopupSyncToken
   };
 })(typeof globalThis !== 'undefined' ? globalThis : window);
