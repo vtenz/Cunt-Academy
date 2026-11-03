@@ -327,7 +327,6 @@
    * Lexa AI (Gemini) Contextual Word/Phrase Analyzer for the YouTube Extension Dictionary Drawer.
    * Queries complete multi-POS + contextual sentence translation + grammatical/collocation nuance.
    */
-  const DEFAULT_GEMINI_KEY = ['A', 'Q', '.', 'Ab8RN6IM', 'kYiwCAzGzbYzHh', 'Y1ySYRe8Cv7tHp', 'xUsrEdmuRovlyw'].join('');
   const aiExplainCache = new Map();
 
   async function analyzeContextualAi(wordOrPhrase, contextSentence = '', sourceLang = 'en', targetLang = 'fa') {
@@ -357,50 +356,33 @@
 
     let grammarNuanceFa = grammarMeta.summaryFa;
 
-    // On-Demand Only: Query Google Gemini 2.5 Flash REST API when user explicitly clicked the AI button
+    // On-Demand Only: Query server-side /api/gemini/contextual-explain endpoint when user clicks the AI button
     try {
       const settings = globalThis.LTDatabase ? await globalThis.LTDatabase.getSettings() : {};
-      const activeKey = String((settings && settings.geminiApiKey) || DEFAULT_GEMINI_KEY).trim();
-      if (activeKey) {
-        const prompt = `Analyze the English word or phrase "${clean}" inside this video subtitle sentence: "${cleanCtx || clean}".
-Return JSON only with keys:
-- contextualMeaningFa (exact Persian meaning in this sentence)
-- posInSentence (part of speech in this sentence)
-- sentenceTranslationFa (fluent Persian translation of the sentence)
-- grammarNuanceFa (concise Persian explanation of why this meaning fits here)`;
-        const gemUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(activeKey)}`;
-        const gemRes = await fetchWithTimeout(
-          gemUrl,
-          3800
-        ).catch(() => null);
-        // Only send POST if we construct options
-        void gemRes;
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 4000);
-        const postRes = await fetch(gemUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseMimeType: 'application/json', temperature: 0.2 }
-          }),
-          signal: controller.signal
-        }).finally(() => clearTimeout(timer));
+      const baseUrl = String((settings && settings.cloudAppUrl) || 'https://cunt-academy.netlify.app/').replace(/\/+$/, '');
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4000);
+      const postRes = await fetch(`${baseUrl}/api/gemini/contextual-explain`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wordOrPhrase: clean,
+          sentenceEn: cleanCtx
+        }),
+        signal: controller.signal
+      }).finally(() => clearTimeout(timer));
 
-        if (postRes && postRes.ok) {
-          const gemJson = await postRes.json();
-          const rawText = gemJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          if (rawText) {
-            const parsed = JSON.parse(rawText);
-            if (parsed.contextualMeaningFa) contextualMeaningFa = parsed.contextualMeaningFa;
-            if (parsed.posInSentence) posInSentence = parsed.posInSentence;
-            if (parsed.sentenceTranslationFa) sentenceTranslationFa = parsed.sentenceTranslationFa;
-            if (parsed.grammarNuanceFa) grammarNuanceFa = parsed.grammarNuanceFa;
-          }
+      if (postRes && postRes.ok) {
+        const parsed = await postRes.json();
+        if (parsed && !parsed.fallback) {
+          if (parsed.contextualMeaningFa) contextualMeaningFa = parsed.contextualMeaningFa;
+          if (parsed.posInSentence) posInSentence = parsed.posInSentence;
+          if (parsed.sentenceTranslationFa) sentenceTranslationFa = parsed.sentenceTranslationFa;
+          if (parsed.grammarNuanceFa) grammarNuanceFa = parsed.grammarNuanceFa;
         }
       }
     } catch (_gemErr) {
-      // Keep rich multi-POS contextual analysis if offline or restricted key
+      // Keep rich multi-POS contextual analysis if offline
     }
 
     const aiPayload = {

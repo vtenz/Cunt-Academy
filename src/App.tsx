@@ -265,16 +265,6 @@ export default function App() {
               );
               setAuthUser(directUser);
             }
-            if (decoded.geminiApiKey) {
-              const nextCfg = saveGeminiConfig({
-                apiKey: decoded.geminiApiKey,
-                verified: true,
-                verifiedAt: Date.now(),
-                model: 'gemini-2.5-flash',
-                statusMessageFa: 'متصل به Google Gemini 2.5 Flash (سینک شده با اکستنشن)',
-              });
-              setGeminiConfig(nextCfg);
-            }
             setSyncStatus('synced');
             window.history.replaceState(
               null,
@@ -297,7 +287,7 @@ export default function App() {
       setExtensionBridgeConnected(true);
 
       if (data.type === 'EXT_STATE_PUSH' && data.payload) {
-        const { cards: extCards, cloudAccount, geminiApiKey } = data.payload;
+        const { cards: extCards, cloudAccount } = data.payload;
         if (Array.isArray(extCards) && extCards.length > 0) {
           mergeIncomingExtensionCards(extCards);
         }
@@ -308,19 +298,6 @@ export default function App() {
             cloudAccount.displayName
           );
           setAuthUser(directUser);
-        }
-        if (geminiApiKey && typeof geminiApiKey === 'string' && geminiApiKey.length >= 12) {
-          const currentCfg = loadGeminiConfig();
-          if (currentCfg.apiKey !== geminiApiKey) {
-            const updatedCfg = saveGeminiConfig({
-              apiKey: geminiApiKey,
-              verified: true,
-              verifiedAt: Date.now(),
-              model: 'gemini-2.5-flash',
-              statusMessageFa: 'متصل به Google Gemini 2.5 Flash (سینک شده با اکستنشن)',
-            });
-            setGeminiConfig(updatedCfg);
-          }
         }
         setSyncStatus('synced');
       }
@@ -359,7 +336,6 @@ export default function App() {
                   syncToken: generateExtensionSyncToken(authUser, cards),
                 }
               : null,
-            geminiApiKey: geminiConfig.verified ? geminiConfig.apiKey : '',
           },
         },
         '*'
@@ -541,7 +517,6 @@ export default function App() {
                   syncToken: generateExtensionSyncToken(authUser, cards),
                 }
               : null,
-            geminiApiKey: geminiConfig.verified ? geminiConfig.apiKey : '',
           },
         },
         '*'

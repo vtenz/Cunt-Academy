@@ -21,8 +21,7 @@ import { LeitnerCard } from '../utils/linguatubeLogic';
 import {
   GeminiConnectionConfig,
   loadGeminiConfig,
-  verifyAndConnectGeminiKey,
-  disconnectGeminiConfig,
+  verifyServerGeminiConnection,
 } from '../services/geminiService';
 
 export const PUBLIC_SHARED_APP_URL = 'https://cunt-academy.netlify.app/';
@@ -73,9 +72,8 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
   const [showTokenPaste, setShowTokenPaste] = useState(false);
   const [tokenSuccessMsg, setTokenSuccessMsg] = useState<string | null>(null);
 
-  // Gemini API Key Connection & Verification State
+  // Server-Side Gemini AI Connection & Verification State
   const [geminiCfg, setGeminiCfg] = useState<GeminiConnectionConfig>(() => loadGeminiConfig());
-  const [geminiKeyInput, setGeminiKeyInput] = useState<string>(() => loadGeminiConfig().apiKey);
   const [geminiVerifying, setGeminiVerifying] = useState<boolean>(false);
   const [geminiVerifyError, setGeminiVerifyError] = useState<string | null>(null);
 
@@ -83,7 +81,6 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
     if (isOpen) {
       const latest = loadGeminiConfig();
       setGeminiCfg(latest);
-      setGeminiKeyInput(latest.apiKey);
       setGeminiVerifyError(null);
     }
   }, [isOpen]);
@@ -120,12 +117,11 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
     setTimeout(() => setTokenSuccessMsg(null), 4000);
   };
 
-  const handleVerifyGeminiKey = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleVerifyGeminiServer = async () => {
     setGeminiVerifying(true);
     setGeminiVerifyError(null);
     try {
-      const verifiedCfg = await verifyAndConnectGeminiKey(geminiKeyInput);
+      const verifiedCfg = await verifyServerGeminiConnection();
       setGeminiCfg(verifiedCfg);
       onGeminiConfigChange?.(verifiedCfg);
     } catch (err) {
@@ -133,14 +129,6 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
     } finally {
       setGeminiVerifying(false);
     }
-  };
-
-  const handleDisconnectGemini = () => {
-    const empty = disconnectGeminiConfig();
-    setGeminiCfg(empty);
-    setGeminiKeyInput('');
-    setGeminiVerifyError(null);
-    onGeminiConfigChange?.(empty);
   };
 
   return (
@@ -179,7 +167,7 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
         </div>
 
         <div className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
-          {/* SECTION 1: GEMINI AI API KEY CONNECTION & LIVE VERIFICATION */}
+          {/* SECTION 1: SERVER-SIDE GEMINI AI CONNECTION & VERIFICATION */}
           <div
             data-testid="gemini-connection-section"
             className="p-5 duo-card-subtle space-y-3.5 border-2 border-[#CE82FF]"
@@ -187,78 +175,49 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-xs font-black text-[#CE82FF]">
                 <Cpu className="w-4 h-4 shrink-0" />
-                <span>۱. اتصال و تایید کلید هوش مصنوعی Google Gemini (مدل Gemini 2.5 Flash):</span>
+                <span>۱. وضعیت سرویس هوش مصنوعی Google Gemini (سمت سرور):</span>
               </div>
-              {geminiCfg.verified ? (
-                <span
-                  data-testid="gemini-verified-badge"
-                  className="px-3 py-1 rounded-xl bg-[#58CC02] text-white text-[11px] font-black flex items-center gap-1"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>متصل به Gemini 2.5 Flash (تایید شده)</span>
-                </span>
-              ) : (
-                <span className="px-3 py-1 rounded-xl bg-[#FF9600]/20 text-[#FF9600] text-[11px] font-black">
-                  در انتظار اتصال کلید
-                </span>
-              )}
+              <span
+                data-testid="gemini-verified-badge"
+                className="px-3 py-1 rounded-xl bg-[#58CC02] text-white text-[11px] font-black flex items-center gap-1"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>متصل به Google Gemini (فعال روی سرور)</span>
+              </span>
             </div>
 
             <p className="text-xs font-bold duo-text-muted leading-relaxed">
-              کلید API خود را در کادر زیر وارد کرده و روی <strong>«بررسی و اتصال به Gemini AI»</strong> بزنید تا اتصال زنده به سرور گوگل تایید شود.{' '}
+              تمامی درخواست‌های هوش مصنوعی Google Gemini به صورت یکپارچه از طریق سرور انجام می‌شوند.{' '}
               <strong className="text-[#58CC02]">
-                🔒 تضمین عدم مصرف خودکار: هیچ درخواستی به صورت خودکار ارسال نمی‌شود و فقط زمانی که خودتان روی دکمه ✨ کلیک کنید از کلید شما استفاده خواهد شد.
+                🔒 تضمین اجرای انتخابی: هیچ درخواستی به صورت خودکار ارسال نمی‌شود و فقط زمانی که خودتان روی دکمه ✨ کلیک کنید اجرا خواهد شد.
               </strong>
             </p>
 
-            <form onSubmit={handleVerifyGeminiKey} className="space-y-2.5">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <input
-                  type="text"
-                  dir="ltr"
-                  value={geminiKeyInput}
-                  onChange={(e) => setGeminiKeyInput(e.target.value)}
-                  placeholder="Enter your Google Gemini API Key"
-                  data-testid="gemini-api-key-input"
-                  className="flex-1 duo-surface-main border-2 duo-border rounded-2xl px-3.5 py-2.5 text-xs font-mono font-bold duo-text-main focus:outline-none focus:border-[#CE82FF]"
-                />
-                <button
-                  type="submit"
-                  disabled={geminiVerifying}
-                  data-testid="verify-gemini-key-btn"
-                  className="duo-btn duo-btn-purple px-4 py-2.5 text-xs shrink-0"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>
-                    {geminiVerifying
-                      ? 'در حال تست اتصال با Gemini...'
-                      : 'بررسی و اتصال به Gemini AI'}
-                  </span>
-                </button>
-                {geminiCfg.verified && (
-                  <button
-                    type="button"
-                    onClick={handleDisconnectGemini}
-                    className="duo-btn duo-btn-neutral px-3 py-2.5 text-xs shrink-0"
-                    title="قطع اتصال یا تغییر کلید"
-                  >
-                    حذف کلید
-                  </button>
-                )}
-              </div>
-            </form>
-
-            {geminiCfg.verified && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div
                 data-testid="gemini-status-message"
-                className="p-3 rounded-2xl bg-[#58CC02]/15 border-2 border-[#58CC02] text-[#58CC02] text-xs font-black flex items-center justify-between gap-2"
+                className="flex-1 p-3 rounded-2xl bg-[#58CC02]/15 border-2 border-[#58CC02] text-[#58CC02] text-xs font-black flex items-center justify-between gap-2"
               >
                 <span>{geminiCfg.statusMessageFa}</span>
                 <span dir="ltr" className="font-mono text-[10px] px-2 py-0.5 rounded-lg bg-[#58CC02] text-white">
                   {geminiCfg.model}
                 </span>
               </div>
-            )}
+              <button
+                type="button"
+                onClick={handleVerifyGeminiServer}
+                disabled={geminiVerifying}
+                data-testid="verify-gemini-key-btn"
+                className="duo-btn duo-btn-purple px-4 py-2.5 text-xs shrink-0"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>
+                  {geminiVerifying
+                    ? 'در حال بررسی سرور Gemini...'
+                    : 'تست اتصال سرور Gemini AI'}
+                </span>
+              </button>
+            </div>
 
             {geminiVerifyError && (
               <div className="p-3 rounded-2xl bg-[#FF4B4B]/15 border-2 border-[#FF4B4B] text-[#FF4B4B] text-xs font-bold">
