@@ -349,7 +349,13 @@
     'in the middle of': { fa: 'در میانِ / در وسطِ', pos: 'collocation' },
     'thousand miles': { fa: 'هزار مایل', pos: 'collocation' },
     'text-to-image generator': { fa: 'مولد تصویر از متن', pos: 'compound' },
-    'image generator': { fa: 'مولد تصویر هوش مصنوعی', pos: 'compound' }
+    'image generator': { fa: 'مولد تصویر هوش مصنوعی', pos: 'compound' },
+    'in retrospect': { fa: 'در نگاه به گذشته / با بازنگری گذشته / حالا که به گذشته نگاه می‌کنیم', pos: 'idiom / adverbial' },
+    'taking in': { fa: 'جذب کردن (اطلاعات) / درک کردن / دریافت کردن', pos: 'phrasal verb' },
+    'take in': { fa: 'درک کردن / جذب کردن اطلاعات / پذیرفتن', pos: 'phrasal verb' },
+    'given how': { fa: 'با توجه به اینکه چقدر... / نظر به اینکه...', pos: 'conjunction phrase' },
+    'even more': { fa: 'حتی بیشتر / به مراتب بیشتر', pos: 'adverbial' },
+    'knowledge work': { fa: 'کار دانشی / فعالیت فکری و پژوهشی', pos: 'compound noun' }
   };
 
   const PHRASAL_PARTICLES = new Set([
@@ -534,7 +540,9 @@
     subtle: 2550, ambiguous: 4300, catalyst: 4600, empirical: 4100, nuance: 5100,
     hypothesis: 3250, synthesize: 4850, trajectory: 4200, proliferate: 6300, quintessential: 6800,
     reluctant: 3150, nostalgia: 4550, melancholy: 5400, dilemma: 3500, paradox: 3950,
-    flourish: 3850, obsolete: 4750, intricate: 4050, scrutinize: 5900, conundrum: 6500
+    flourish: 3850, obsolete: 4750, intricate: 4050, scrutinize: 5900, conundrum: 6500,
+    retrospect: 6200, tangential: 6800, impressive: 1850, accurate: 1650, relatively: 1450,
+    column: 1750, researching: 2100, research: 850, information: 320, cycle: 1600, gaming: 2200
   };
 
   function normalizeWord(raw) {
@@ -554,7 +562,7 @@
       did: 'do', does: 'do', done: 'do',
       said: 'say', says: 'say',
       made: 'make', makes: 'make',
-      took: 'take', taken: 'take',
+      took: 'take', taken: 'take', taking: 'take',
       came: 'come', comes: 'come',
       saw: 'see', seen: 'see',
       knew: 'know', known: 'know',
@@ -588,13 +596,15 @@
       built: 'build',
       understood: 'understand',
       drew: 'draw', drawn: 'draw',
-      woke: 'wake', woken: 'wake'
+      woke: 'wake', woken: 'wake',
+      given: 'give', gave: 'give',
+      researching: 'research', researched: 'research'
     };
     if (irregulars[clean]) return irregulars[clean];
     if (clean.endsWith('ies') && clean.length > 4) return clean.slice(0, -3) + 'y';
     if (clean.endsWith('ing') && clean.length > 5) {
       const stem = clean.slice(0, -3);
-      if (CORE_FREQUENCY_MAP[stem + 'e'] || stem.endsWith('at') || stem.endsWith('ut') || stem.endsWith('it')) {
+      if (CORE_FREQUENCY_MAP[stem + 'e'] || stem.endsWith('at') || stem.endsWith('ut') || stem.endsWith('it') || stem.endsWith('cl')) {
         return stem + 'e';
       }
       return stem;
@@ -614,13 +624,77 @@
         return clean.slice(0, -1);
       }
     }
-    if (clean.endsWith('s') && !clean.endsWith('ss') && clean.length > 3) {
+    if (clean.endsWith('s') && !clean.endsWith('ss') && !clean.endsWith('us') && clean.length > 3) {
       return clean.slice(0, -1);
     }
     return clean;
   }
 
   const LOCAL_MULTI_POS_DICT = {
+    retrospect: [
+      { pos: 'noun', terms: ['نگاه به گذشته', 'بازنگری گذشته', 'مرور رویدادهای پیشین', 'عطف به ماسبق'] },
+      { pos: 'idiom (in retrospect)', terms: ['در نگاه به گذشته', 'حالا که به گذشته نگاه می‌کنیم', 'با دیدِ پسینی'] },
+      { pos: 'verb', terms: ['به گذشته نگریستن', 'مرور کردن گذشته'] }
+    ],
+    tangential: [
+      { pos: 'adjective', terms: ['فرعی و حاشیه‌ای', 'بی‌ربط یا کم‌ارتباط با موضوع اصلی', 'گذرا و سطحی', 'مماس (در هندسه)'] },
+      { pos: 'adverb (tangentially)', terms: ['به صورت حاشیه‌ای', 'به طور غیرمستقیم و فرعی'] },
+      { pos: 'noun (tangent)', terms: ['خروج از بحث اصلی (go off on a tangent)', 'خط مماس'] }
+    ],
+    impressive: [
+      { pos: 'adjective', terms: ['چشمگیر', 'تأثیرگذار', 'تحسین‌برانگیز', 'شگفت‌انگیز و خیره‌کننده'] },
+      { pos: 'verb (impress)', terms: ['تحت تأثیر قرار دادن', 'تحسین کسی را برانگیختن'] },
+      { pos: 'noun (impression)', terms: ['برداشت اولیه', 'تأثیر', 'انطباع'] }
+    ],
+    accurate: [
+      { pos: 'adjective', terms: ['دقیق', 'صحیح و بی‌نقص', 'درست و معتبر', 'موشکافانه'] },
+      { pos: 'noun (accuracy)', terms: ['دقت', 'صحت', 'درستی'] },
+      { pos: 'adverb (accurately)', terms: ['به طور دقیق', 'به درستی'] }
+    ],
+    relatively: [
+      { pos: 'adverb', terms: ['نسبتاً', 'به طور نسبی', 'در مقایسه با سایر موارد'] },
+      { pos: 'adjective (relative)', terms: ['نسبی', 'وابسته و مرتبط'] }
+    ],
+    column: [
+      { pos: 'noun', terms: ['ستون (در جدول، صفحه یا معماری)', 'ستون مقاله در روزنامه', 'ردیف عمودی'] }
+    ],
+    research: [
+      { pos: 'noun', terms: ['پژوهش', 'تحقیق علمی', 'بررسی و مطالعه عمیق'] },
+      { pos: 'verb (researching)', terms: ['تحقیق کردن', 'پژوهش کردن درباره', 'جستجو و بررسی کردن'] }
+    ],
+    researching: [
+      { pos: 'verb / gerund', terms: ['در حال تحقیق و پژوهش', 'بررسی و گردآوری اطلاعات', 'پژوهش کردن'] },
+      { pos: 'noun (research)', terms: ['تحقیق', 'پژوهش', 'مطالعه'] }
+    ],
+    information: [
+      { pos: 'noun', terms: ['اطلاعات', 'داده‌ها', 'آگاهی و خبر', 'معلومات'] },
+      { pos: 'verb (inform)', terms: ['اطلاع دادن', 'آگاه ساختن'] }
+    ],
+    knowledge: [
+      { pos: 'noun', terms: ['دانش', 'علم و آگاهی', 'شناخت و معرفت', 'معلومات'] },
+      { pos: 'adjective (knowledgeable)', terms: ['آگاه', 'مطلع و دانشمند'] }
+    ],
+    cycle: [
+      { pos: 'noun', terms: ['چرخه', 'دوره تناوب', 'گردش و سیکل', 'دوچرخه'] },
+      { pos: 'verb', terms: ['در چرخه گشتن', 'تکرار دوره‌ای داشتن', 'دوچرخه‌سواری کردن'] }
+    ],
+    gaming: [
+      { pos: 'noun', terms: ['بازی‌های ویدیویی (گیمینگ)', 'اجرای بازی', 'صنعت بازی‌سازی'] },
+      { pos: 'verb (game)', terms: ['بازی کردن', 'سوءاستفاده زیرکانه از قوانین سیستم'] }
+    ],
+    given: [
+      { pos: 'preposition / conjunction', terms: ['با توجه به', 'نظر به اینکه', 'با در نظر گرفتنِ'] },
+      { pos: 'adjective', terms: ['مشخص و معین', 'مفروض', 'داده‌شده'] },
+      { pos: 'noun', terms: ['امر مسلم و بدیهی'] }
+    ],
+    test: [
+      { pos: 'noun', terms: ['آزمون', 'آزمایش و تست', 'محک و سنجش'] },
+      { pos: 'verb', terms: ['آزمایش کردن', 'سنجیدن', 'امتحان کردن'] }
+    ],
+    work: [
+      { pos: 'noun', terms: ['کار', 'فعالیت شغلی', 'اثر هنری یا علمی', 'تلاش'] },
+      { pos: 'verb', terms: ['کار کردن', 'عمل کردن (سیستم)', 'نتیجه دادن'] }
+    ],
     new: [
       { pos: 'adjective', terms: ['جدید', 'نو', 'تازه', 'نوین', 'مدرن'] },
       { pos: 'adverb', terms: ['به تازگی', 'اخیراً', 'از نو'] }
@@ -695,8 +769,106 @@
     figure: [
       { pos: 'verb', terms: ['فهمیدن (figure out)', 'محاسبه کردن', 'تصور کردن'] },
       { pos: 'noun', terms: ['رقم', 'عدد', 'شخصیت', 'شکل و اندام'] }
+    ],
+    resilient: [
+      { pos: 'adjective', terms: ['مقاوم', 'تاب‌آور', 'منعطف در برابر سختی', 'برگشت‌پذیر'] },
+      { pos: 'noun (resilience)', terms: ['تاب‌آوری', 'مقاومت', 'انعطاف‌پذیری'] }
+    ],
+    ephemeral: [
+      { pos: 'adjective', terms: ['زودگذر', 'ناپایدار', 'کوتاه‌عمر و موقتی', 'فانی'] }
+    ],
+    authentic: [
+      { pos: 'adjective', terms: ['اصیل', 'واقعی و معتبر', 'خالص و بی‌تقلب'] }
+    ],
+    effortless: [
+      { pos: 'adjective', terms: ['بی‌دردسر', 'بدون زحمت و تقلا', 'آسان و روان'] }
+    ],
+    fluency: [
+      { pos: 'noun', terms: ['روانی کلام', 'سلاست گفتار', 'تسلط کامل در صحبت کردن'] }
     ]
   };
+
+  const LOCAL_USAGE_EXAMPLES = {
+    retrospect: [
+      {
+        en: 'In retrospect, starting the project early was our smartest decision.',
+        fa: 'در نگاه به گذشته (با بازنگری گذشته)، شروع زودهنگام پروژه هوشمندانه‌ترین تصمیم ما بود.'
+      },
+      {
+        en: 'What seemed like a mistake at the time turned out well in retrospect.',
+        fa: 'چیزی که در آن زمان اشتباه به نظر می‌رسید، در نگاه به گذشته نتیجه بسیار خوبی داد.'
+      }
+    ],
+    tangential: [
+      {
+        en: 'Try not to spend too much time on tangential issues during the meeting.',
+        fa: 'سعی کنید در طول جلسه وقت زیادی را صرف موضوعات فرعی و حاشیه‌ای نکنید.'
+      },
+      {
+        en: 'His comment had only a tangential connection to our main research.',
+        fa: 'نظر او فقط ارتباطی فرعی و غیرمستقیم با پژوهش اصلی ما داشت.'
+      }
+    ],
+    impressive: [
+      {
+        en: 'The accuracy of the new model is truly impressive.',
+        fa: 'دقتِ مدل جدید واقعاً چشمگیر و تحسین‌برانگیز است.'
+      },
+      {
+        en: 'She delivered an impressive presentation to the engineering team.',
+        fa: 'او ارائه بسیار تأثیرگذاری برای تیم مهندسی انجام داد.'
+      }
+    ],
+    accurate: [
+      {
+        en: 'Make sure your data is accurate before publishing the report.',
+        fa: 'قبل از انتشار گزارش مطمئن شوید که داده‌های شما دقیق و صحیح است.'
+      },
+      {
+        en: 'His prediction about the market turned out to be surprisingly accurate.',
+        fa: 'پیش‌بینی او درباره بازار به طرز شگفت‌انگیزی دقیق از آب درآمد.'
+      }
+    ],
+    relatively: [
+      {
+        en: 'The test was relatively easy compared to last week.',
+        fa: 'این آزمون در مقایسه با هفته گذشته نسبتاً آسان بود.'
+      }
+    ],
+    research: [
+      {
+        en: 'They spent months researching how memory consolidation works.',
+        fa: 'آن‌ها ماه‌ها صرف تحقیق و پژوهش درباره نحوه تثبیت حافظه کردند.'
+      }
+    ],
+    researching: [
+      {
+        en: 'She is currently researching new methods for natural language processing.',
+        fa: 'او در حال حاضر مشغول پژوهش روی روش‌های جدید پردازش زبان طبیعی است.'
+      }
+    ]
+  };
+
+  function buildUsageExamplesForWord(cleanWord, posGroups, primaryMeaningFa) {
+    const lemma = lemmatizeWord(cleanWord);
+    if (LOCAL_USAGE_EXAMPLES[cleanWord]) return LOCAL_USAGE_EXAMPLES[cleanWord];
+    if (LOCAL_USAGE_EXAMPLES[lemma]) return LOCAL_USAGE_EXAMPLES[lemma];
+
+    const firstMeaning = (primaryMeaningFa || '').split(/[،,/]/)[0]?.trim() || cleanWord;
+    const secondGroup = Array.isArray(posGroups) && posGroups[1] ? posGroups[1] : null;
+    const secondMeaning = secondGroup && secondGroup.terms && secondGroup.terms[0] ? secondGroup.terms[0] : firstMeaning;
+
+    return [
+      {
+        en: `Using "${cleanWord}" in daily conversation helps express this exact idea clearly.`,
+        fa: `به‌کارگیری «${cleanWord}» به معنی «${firstMeaning}» در مکالمه، انتقال دقیق این مفهوم را آسان می‌کند.`
+      },
+      {
+        en: `Pay attention to how the speaker uses "${cleanWord}" in this context.`,
+        fa: `به نحوه استفاده گوینده از «${cleanWord}» (در نقش ${secondGroup ? secondGroup.pos : 'بافتاری'}: ${secondMeaning}) در این جمله دقت کنید.`
+      }
+    ];
+  }
 
   function lookupInstantLocalMultiPos(rawWordOrPhrase) {
     const clean = String(rawWordOrPhrase || '').toLowerCase().trim().replace(/^[^a-zA-Z0-9']+|[^a-zA-Z0-9']+$/g, '');
@@ -704,13 +876,15 @@
     if (PHRASAL_AND_COLLOCATION_MAP[clean]) {
       const entry = PHRASAL_AND_COLLOCATION_MAP[clean];
       const terms = entry.fa.split('/').map((s) => s.trim()).filter(Boolean);
+      const posGroups = [{ pos: entry.pos || 'phrasal verb', terms }];
       return {
         word: clean,
         lemma: clean,
         pos: entry.pos || 'phrasal verb',
         translation: terms.join('، '),
-        posGroups: [{ pos: entry.pos || 'phrasal verb', terms }],
-        wordMeanings: terms
+        posGroups,
+        wordMeanings: terms,
+        usageExamples: buildUsageExamplesForWord(clean, posGroups, terms[0])
       };
     }
     const lemma = lemmatizeWord(clean);
@@ -728,7 +902,8 @@
         pos: groups[0].pos,
         translation: allTerms.slice(0, 6).join('، '),
         posGroups: groups,
-        wordMeanings: allTerms.slice(0, 5)
+        wordMeanings: allTerms.slice(0, 5),
+        usageExamples: buildUsageExamplesForWord(clean, groups, allTerms[0])
       };
     }
     return null;

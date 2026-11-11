@@ -648,7 +648,7 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
                         ) : (
                           <>
                             <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-400 mb-2">
-                              BACK • معنی دقیق فارسی، دسته‌بندی نقش‌های کلمه و یادداشت شخصی
+                              BACK • معانی کامل به تفکیک نقش دستوری، جملات کاربردی و یادداشت شخصی
                             </span>
                             <div className="text-xl font-black text-white mb-1">
                               {activePumpCard.word}
@@ -656,23 +656,36 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
                             <div
                               dir="rtl"
                               data-testid="flashcard-back-translation"
-                              className="text-2xl font-black text-emerald-400 mb-2"
+                              className="text-2xl font-black text-emerald-400 mb-3"
                             >
                               {activePumpCard.translationFa}
                             </div>
 
-                            {/* Multi-POS Dictionary chips on the back of the card */}
+                            {/* Detailed Multi-POS Meanings Box on the Back of the Card */}
                             {activePumpCard.posEntries && activePumpCard.posEntries.length > 0 && (
-                              <div className="flex flex-wrap items-center justify-center gap-1.5 mb-3 max-w-xl">
+                              <div
+                                dir="rtl"
+                                data-testid="flashcard-back-pos-groups"
+                                className="w-full max-w-xl bg-[#0B0D14]/90 border border-white/15 rounded-xl p-3 mb-3 text-right space-y-1.5"
+                              >
+                                <div className="text-[11px] font-extrabold text-sky-300 mb-1">
+                                  📚 معانی مختلف واژه به تفکیک نقش دستوری (Part of Speech):
+                                </div>
                                 {activePumpCard.posEntries.map((pe, idx) => (
-                                  <span
+                                  <div
                                     key={idx}
-                                    dir="rtl"
-                                    className="px-2.5 py-0.5 rounded-lg bg-white/5 border border-white/10 text-[11px] text-slate-200"
+                                    className="flex items-baseline justify-between gap-3 py-1 border-b border-white/5 last:border-none text-xs"
                                   >
-                                    <strong className="text-sky-300 font-mono">{pe.pos}:</strong>{' '}
-                                    {pe.terms.join('، ')}
-                                  </span>
+                                    <span className="text-slate-100 font-bold">
+                                      {pe.terms.join('، ')}
+                                    </span>
+                                    <span
+                                      dir="ltr"
+                                      className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-mono text-[10px] font-bold shrink-0"
+                                    >
+                                      {pe.pos}
+                                    </span>
+                                  </div>
                                 ))}
                               </div>
                             )}
@@ -682,21 +695,87 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
                               <div
                                 dir="rtl"
                                 data-testid="flashcard-back-custom-notes"
-                                className="text-xs font-bold text-amber-200 bg-amber-500/15 border border-amber-500/35 px-3.5 py-2 rounded-xl mb-2.5 max-w-xl"
+                                className="text-xs font-bold text-amber-200 bg-amber-500/15 border border-amber-500/35 px-3.5 py-2 rounded-xl mb-3 max-w-xl w-full text-right"
                               >
                                 📝 یادداشت شما: {activePumpCard.customNotesFa}
                               </div>
                             )}
 
-                            <div dir="rtl" className="text-sm font-medium text-amber-300 mb-2 max-w-xl">
-                              {activePumpCard.contextSentenceFa}
+                            {/* Usage Example Sentences at the Bottom of the Flashcard Back */}
+                            <div
+                              dir="rtl"
+                              data-testid="flashcard-back-usage-examples"
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-full max-w-xl bg-violet-950/35 border border-violet-500/35 rounded-xl p-3 mb-3 text-right space-y-2"
+                            >
+                              <div className="text-[11px] font-extrabold text-violet-300">
+                                💬 جمله‌های نمونه کاربردی که واژه با این منظور در آن‌ها استفاده شده:
+                              </div>
+                              {activePumpCard.contextSentenceEn && (
+                                <div className="p-2 rounded-lg bg-[#0B0D14]/80 border border-white/10 space-y-1">
+                                  <div
+                                    dir="ltr"
+                                    className="flex items-center justify-between gap-2 text-left text-xs text-slate-100 font-semibold"
+                                  >
+                                    <span>1. &ldquo;{activePumpCard.contextSentenceEn}&rdquo;</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => speakText(activePumpCard.contextSentenceEn)}
+                                      className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[10px] text-sky-300 shrink-0"
+                                    >
+                                      🔊
+                                    </button>
+                                  </div>
+                                  {activePumpCard.contextSentenceFa && (
+                                    <div className="text-xs font-bold text-amber-300">
+                                      {activePumpCard.contextSentenceFa}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {activePumpCard.tatoebaExamples &&
+                                activePumpCard.tatoebaExamples
+                                  .filter(
+                                    (tex) =>
+                                      tex.en &&
+                                      tex.en.toLowerCase() !==
+                                        (activePumpCard.contextSentenceEn || '').toLowerCase()
+                                  )
+                                  .slice(0, 2)
+                                  .map((tex, idx) => (
+                                    <div
+                                      key={idx}
+                                      className="p-2 rounded-lg bg-[#0B0D14]/80 border border-white/10 space-y-1"
+                                    >
+                                      <div
+                                        dir="ltr"
+                                        className="flex items-center justify-between gap-2 text-left text-xs text-slate-100 font-semibold"
+                                      >
+                                        <span>
+                                          {idx + 2}. &ldquo;{tex.en}&rdquo;
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => speakText(tex.en)}
+                                          className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-[10px] text-sky-300 shrink-0"
+                                        >
+                                          🔊
+                                        </button>
+                                      </div>
+                                      {tex.fa && (
+                                        <div className="text-xs font-bold text-amber-300">
+                                          {tex.fa}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
                             </div>
 
                             {/* Strictly On-Demand Gemini AI Coach Button on Flashcard Back */}
                             <div
                               dir="rtl"
                               onClick={(e) => e.stopPropagation()}
-                              className="mt-2 max-w-xl w-full flex flex-col items-center gap-2"
+                              className="mt-1 max-w-xl w-full flex flex-col items-center gap-2"
                             >
                               {flashcardAiGeneratedMap[activePumpCard.id] ? (
                                 <div
@@ -704,7 +783,7 @@ export const LeitnerCenterView: React.FC<LeitnerCenterViewProps> = ({
                                   className="text-xs text-violet-100 bg-violet-950/60 border border-violet-500/40 px-3.5 py-2.5 rounded-xl w-full text-right leading-relaxed space-y-1"
                                 >
                                   <div className="font-black text-emerald-300 text-[11px]">
-                                    ✨ پاسخ هوش مصنوعی Google Gemini 2.5 Flash:
+                                    ✨ پاسخ هوش مصنوعی Google Gemini:
                                   </div>
                                   <div>{flashcardAiGeneratedMap[activePumpCard.id]}</div>
                                 </div>

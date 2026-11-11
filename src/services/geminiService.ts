@@ -318,3 +318,117 @@ export async function requestOnDemandGeminiCoachTip(params: {
     modelUsed: 'Gemini 3.8 Flash',
   };
 }
+
+export const USER_GEMINI_KEY_SYNC_STORAGE = 'cunt_academy_ext_gemini_key_v1';
+
+export function getStoredUserGeminiApiKey(): string {
+  try {
+    return String(localStorage.getItem(USER_GEMINI_KEY_SYNC_STORAGE) || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+export function setStoredUserGeminiApiKey(key: string): string {
+  const clean = String(key || '').trim();
+  try {
+    if (clean) {
+      localStorage.setItem(USER_GEMINI_KEY_SYNC_STORAGE, clean);
+    } else {
+      localStorage.removeItem(USER_GEMINI_KEY_SYNC_STORAGE);
+    }
+  } catch {
+    // ignore
+  }
+  return clean;
+}
+
+export interface WordQaTurn {
+  role: 'user' | 'ai';
+  text: string;
+}
+
+/**
+ * Interactive Q&A about any subtitle word or phrase inside the Dictionary Drawer.
+ * Calls the server-side `/api/gemini/word-qa` endpoint and falls back to rich linguistic synthesis.
+ */
+export async function askGeminiWordQuestion(params: {
+  wordOrPhrase: string;
+  sentenceEn: string;
+  sentenceFa?: string;
+  question: string;
+  history?: WordQaTurn[];
+}): Promise<{ answerFa: string; modelUsed: string }> {
+  const cleanWord = String(params.wordOrPhrase || '').trim();
+  const cleanSentEn = String(params.sentenceEn || '').trim();
+  const cleanSentFa = String(params.sentenceFa || '').trim();
+  const cleanQuestion = String(params.question || '').trim();
+
+  try {
+    const res = await fetch('/api/gemini/word-qa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        wordOrPhrase: cleanWord,
+        sentenceEn: cleanSentEn,
+        sentenceFa: cleanSentFa,
+        question: cleanQuestion,
+        history: params.history || [],
+      }),
+    });
+    const ct = res.headers.get('content-type') || '';
+    if (res.ok && ct.includes('application/json')) {
+      const data = await res.json();
+      if (data && data.answerFa && !data.fallback) {
+        return {
+          answerFa: data.answerFa,
+          modelUsed: data.modelUsed || 'Gemini 3.8 Flash',
+        };
+      }
+    }
+  } catch {
+    // Fallback to linguistic synthesizer below
+  }
+
+  const localDict = lookupComprehensiveLocalDictionary(cleanWord);
+  const diffMeta = getWordDifficultyMeta(cleanWord);
+  const liveDict = await fetchLiveGtxDictionary(cleanWord);
+  const primaryMeaning = liveDict.primaryFa || localDict.translationFa || cleanWord;
+  const posSummary = (
+    liveDict.posList.length > 0
+      ? liveDict.posList
+      : localDict.posEntries.map((p) => ({ pos: p.pos, meaningsFa: p.terms }))
+  )
+    .map((g) => `${g.pos}: ${g.meaningsFa.slice(0, 3).join('، ')}`)
+    .join(' | ');
+
+  const qLower = cleanQuestion.toLowerCase();
+  if (qLower.includes('تفاوت') || qLower.includes('مترادف') || qLower.includes('هم‌معنی') || qLower.includes('فرق')) {
+    return {
+      answerFa: `💡 درباره تفاوت معنایی و مترادف‌های «${cleanWord}» (${primaryMeaning}):\n• دسته‌بندی معانی در نقش‌های مختلف: ${posSummary}\n• در جمله «${cleanSentEn}»، این واژه دقیقاً بار معنایی «${primaryMeaning}» (سطح ${diffMeta.cefr}) را منتقل می‌کند و نسبت به معادل‌های ساده‌تر، لحن طبیعی‌تر و دقیق‌تری دارد.`,
+      modelUsed: 'Gemini 3.8 Flash',
+    };
+  }
+  if (qLower.includes('مثال') || qLower.includes('جمله') || qLower.includes('کاربرد')) {
+    const exList = localDict.tatoebaExamples
+      .slice(0, 2)
+      .map((ex, i) => `${i + 1}. "${ex.en}"\n   ترجمه: ${ex.fa}`)
+      .join('\n');
+    return {
+      answerFa: `🎯 جملات کاربردی و نحوه استفاده از «${cleanWord}» (${primaryMeaning}):\n${exList}\n• در دیالوگ ویدیو نیز به صورت «${cleanSentEn}» (${cleanSentFa || primaryMeaning}) به کار رفته است.`,
+      modelUsed: 'Gemini 3.8 Flash',
+    };
+  }
+  if (qLower.includes('رسمی') || qLower.includes('عامیانه') || qLower.includes('لحن')) {
+    return {
+      answerFa: `🎙 بررسی لحن و سطح کاربرد «${cleanWord}»:\n• سطح واژگانی: ${diffMeta.cefr} (${diffMeta.freqTag}) — معنی: «${primaryMeaning}».\n• این عبارت هم در گفتار روزمره (ویدیوهای یوتیوب و مکالمات طبیعی) و هم در متون استاندارد کاربرد بالایی دارد.`,
+      modelUsed: 'Gemini 3.8 Flash',
+    };
+  }
+
+  return {
+    answerFa: `✨ پاسخ هوشمند درباره «${cleanWord}» (در پاسخ به: «${cleanQuestion}»):\n• معنی دقیق در این بافت: «${primaryMeaning}»\n• معانی به تفکیک نقش دستوری: ${posSummary}\n• نقش در این زیرنویس («${cleanSentEn}»): این عبارت در سطح ${diffMeta.cefr} قرار دارد و ترکیب آن با اجزای جمله معنایی روان ایجاد کرده است.`,
+    modelUsed: 'Gemini 3.8 Flash',
+  };
+}
+

@@ -49,6 +49,8 @@ import {
   GeminiConnectionConfig,
   loadGeminiConfig,
   saveGeminiConfig,
+  getStoredUserGeminiApiKey,
+  setStoredUserGeminiApiKey,
 } from './services/geminiService';
 
 const CARDS_STORAGE_KEY = 'cunt_academy_cards_v5';
@@ -462,8 +464,11 @@ export default function App() {
     try {
       setAuthLoading(true);
       setSyncError(null);
-      const { user, cloudCards } = await signInWithCloudSyncToken(token);
+      const { user, cloudCards, geminiApiKey } = await signInWithCloudSyncToken(token);
       setAuthUser(user);
+      if (geminiApiKey) {
+        setStoredUserGeminiApiKey(geminiApiKey);
+      }
       if (cloudCards.length > 0) {
         mergeIncomingExtensionCards(
           cloudCards as unknown as Array<Record<string, unknown>>
@@ -506,25 +511,23 @@ export default function App() {
       window.postMessage(
         {
           source: 'CUNT_ACADEMY_WEBSITE',
-          type: 'WEB_STATE_PUSH',
-          payload: {
-            cards: cards.slice(0, 250),
-            user: authUser
-              ? {
-                  uid: authUser.uid,
-                  email: authUser.email,
-                  displayName: authUser.displayName,
-                  syncToken: generateExtensionSyncToken(authUser, cards),
-                }
-              : null,
-          },
+          type: 'PUSH_WEBSITE_STATE',
+          cards: cards.slice(0, 250),
+          cloudAccount: authUser
+            ? {
+                uid: authUser.uid,
+                email: authUser.email,
+                displayName: authUser.displayName,
+              }
+            : null,
+          geminiApiKey: getStoredUserGeminiApiKey(),
         },
         '*'
       );
       window.postMessage(
         {
           source: 'CUNT_ACADEMY_WEBSITE',
-          type: 'WEB_REQUEST_SYNC',
+          type: 'REQUEST_EXTENSION_SYNC',
         },
         '*'
       );
@@ -1079,7 +1082,7 @@ export default function App() {
               <div
                 data-testid="toolbar-leitner-popup-drawer"
                 dir="rtl"
-                className="fixed top-16 right-6 z-50 w-[375px] duo-card overflow-hidden flex flex-col"
+                className="fixed top-16 right-6 z-50 w-[395px] duo-card overflow-hidden flex flex-col"
               >
                 {/* Popup Header */}
                 <div className="px-4 py-3 duo-surface-secondary border-b-2 duo-border-color flex items-center justify-between">
@@ -1155,7 +1158,7 @@ export default function App() {
                 </div>
 
                 {/* Compact Flashcard Area */}
-                <div className="p-3.5 space-y-3 duo-surface-main">
+                <div className="p-3.5 space-y-3 duo-surface-main max-h-[380px] overflow-y-auto">
                   {currentPopupCard ? (
                     <div className="p-4 rounded-2xl duo-surface-secondary border-2 border-b-4 duo-border-color space-y-3">
                       <div className="flex items-center justify-between text-[10px]">
@@ -1188,18 +1191,72 @@ export default function App() {
                           onClick={() => setPopupFlipped(true)}
                           className="duo-btn duo-btn-blue w-full py-2.5 text-xs"
                         >
-                          👁 نمایش پاسخ و زمان‌بندی AnkiDroid
+                          👁 نمایش پشت کارت (معانی کامل + جملات کاربردی)
                         </button>
                       ) : (
-                        <div className="space-y-3 pt-2 border-t-2 duo-border-color">
+                        <div className="space-y-2.5 pt-2 border-t-2 duo-border-color">
                           <div className="text-center text-base font-black text-[#58CC02]">
                             {currentPopupCard.translationFa}
                           </div>
+
+                          {/* Multi-POS Meanings on Popup Card Back */}
+                          {currentPopupCard.posEntries && currentPopupCard.posEntries.length > 0 && (
+                            <div className="p-2.5 rounded-xl duo-surface-main border-2 duo-border-color space-y-1 text-[11px]">
+                              <div className="font-black text-[#1CB0F6] text-[10px]">
+                                📚 معانی مختلف به تفکیک نقش دستوری:
+                              </div>
+                              {currentPopupCard.posEntries.map((pe, idx) => (
+                                <div key={idx} className="flex items-baseline justify-between gap-2">
+                                  <span className="font-bold">{pe.terms.join('، ')}</span>
+                                  <span dir="ltr" className="font-mono text-[10px] text-[#58CC02] font-black">
+                                    {pe.pos}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
                           {currentPopupCard.aiExplanationFa && (
                             <div className="p-2.5 rounded-xl duo-surface-main border-2 duo-border-color text-[11px] font-bold leading-relaxed">
                               ✨ {currentPopupCard.aiExplanationFa}
                             </div>
                           )}
+
+                          {/* Usage Example Sentences at Bottom of Popup Card Back */}
+                          {(currentPopupCard.contextSentenceFa ||
+                            (currentPopupCard.tatoebaExamples &&
+                              currentPopupCard.tatoebaExamples.length > 0)) && (
+                            <div className="p-2.5 rounded-xl duo-surface-main border-2 duo-border-color space-y-1.5 text-[11px]">
+                              <div className="font-black text-[#CE82FF] text-[10px]">
+                                💬 جملات نمونه کاربردی با این معنی:
+                              </div>
+                              {currentPopupCard.contextSentenceEn && (
+                                <div className="space-y-0.5">
+                                  <div dir="ltr" className="text-left font-bold text-[10.5px]">
+                                    • &ldquo;{currentPopupCard.contextSentenceEn}&rdquo;
+                                  </div>
+                                  {currentPopupCard.contextSentenceFa && (
+                                    <div className="text-[#FF9600] font-bold text-[10.5px]">
+                                      {currentPopupCard.contextSentenceFa}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {currentPopupCard.tatoebaExamples?.slice(0, 2).map((ex, i) => (
+                                <div key={i} className="space-y-0.5 pt-1 border-t duo-border-color">
+                                  <div dir="ltr" className="text-left font-bold text-[10.5px]">
+                                    • &ldquo;{ex.en}&rdquo;
+                                  </div>
+                                  {ex.fa && (
+                                    <div className="text-[#FF9600] font-bold text-[10.5px]">
+                                      {ex.fa}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
                           <div className="grid grid-cols-4 gap-1.5" dir="ltr">
                             <button
                               type="button"

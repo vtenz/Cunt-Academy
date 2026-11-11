@@ -93,7 +93,8 @@
     isEditingBack: false,
     searchQuery: '',
     websiteUrl: DEFAULT_WEBSITE_URL,
-    cloudAccount: null
+    cloudAccount: null,
+    geminiApiKey: ''
   };
 
   function escapeHtml(str) {
@@ -133,6 +134,17 @@
     } else {
       state.websiteUrl = DEFAULT_WEBSITE_URL;
     }
+    state.geminiApiKey = (settings && settings.geminiApiKey) ? String(settings.geminiApiKey).trim() : '';
+    const keyInputEl = document.getElementById('popup-gemini-key-input');
+    const keyStatusEl = document.getElementById('popup-gemini-key-status');
+    if (keyInputEl && state.geminiApiKey) {
+      keyInputEl.value = state.geminiApiKey;
+    }
+    if (keyStatusEl) {
+      keyStatusEl.textContent = state.geminiApiKey
+        ? '✓ کلید هوش مصنوعی Gemini شما فعال است و در دیکشنری یوتیوب و سایت استفاده می‌شود.'
+        : 'کلید Gemini API هنوز ثبت نشده است — برای فعال‌سازی تحلیل عمیق و چت هوشمند، کلید خود را وارد کنید.';
+    }
     await updateFooterWebsiteLink();
     updateCloudHeaderBadge();
     renderAll();
@@ -166,15 +178,16 @@
   function updateCloudHeaderBadge() {
     const labelEl = document.getElementById('popup-cloud-label');
     const statusBox = document.getElementById('popup-cloud-status-box');
+    const aiBadge = state.geminiApiKey ? ' • ✨AI' : '';
     if (state.cloudAccount && state.cloudAccount.email) {
-      if (labelEl) labelEl.textContent = `☁ ${state.cloudAccount.email.split('@')[0]}`;
+      if (labelEl) labelEl.textContent = `☁ ${state.cloudAccount.email.split('@')[0]}${aiBadge}`;
       if (statusBox) {
         statusBox.textContent = `✓ متصل به جیمیل: ${state.cloudAccount.email} (${state.cards.length} کارت آماده سینک با سایت)`;
       }
     } else {
-      if (labelEl) labelEl.textContent = '☁ سینک ابری';
+      if (labelEl) labelEl.textContent = `☁ سینک / 🔑AI${aiBadge}`;
       if (statusBox) {
-        statusBox.textContent = `آماده اتصال — جیمیل یا کد اتصال سایت را وارد کنید (${state.cards.length} کارت در اکستنشن).`;
+        statusBox.textContent = `آماده اتصال — جیمیل، کد اتصال سایت یا کلید Gemini API خود را وارد کنید (${state.cards.length} کارت).`;
       }
     }
   }
@@ -256,6 +269,45 @@
     });
   }
 
+  function getRichBackDataForCard(card) {
+    const localHit = Constants && typeof Constants.lookupInstantLocalMultiPos === 'function'
+      ? Constants.lookupInstantLocalMultiPos(card.word)
+      : null;
+
+    const posGroups = (Array.isArray(card.posGroups) && card.posGroups.length > 0)
+      ? card.posGroups
+      : (localHit && Array.isArray(localHit.posGroups) && localHit.posGroups.length > 0)
+        ? localHit.posGroups
+        : [{ pos: card.pos || 'word', meanings: [card.translation || card.word] }];
+
+    const usageExamples = [];
+    if (card.contextSentence) {
+      usageExamples.push({
+        en: card.contextSentence,
+        fa: card.contextTranslation || ''
+      });
+    }
+    if (Array.isArray(card.tatoebaExamples)) {
+      for (const ex of card.tatoebaExamples) {
+        if (ex && ex.en && !usageExamples.some((u) => u.en.toLowerCase() === ex.en.toLowerCase())) {
+          usageExamples.push({ en: ex.en, fa: ex.fa || '' });
+        }
+      }
+    }
+    if (usageExamples.length < 2 && localHit && Array.isArray(localHit.tatoebaExamples)) {
+      for (const ex of localHit.tatoebaExamples) {
+        if (ex && ex.en && !usageExamples.some((u) => u.en.toLowerCase() === ex.en.toLowerCase())) {
+          usageExamples.push({ en: ex.en, fa: ex.fa || '' });
+        }
+      }
+    }
+
+    return {
+      posGroups: posGroups.slice(0, 4),
+      usageExamples: usageExamples.slice(0, 3)
+    };
+  }
+
   function renderReviewStage() {
     const stage = document.getElementById('popup-card-stage');
     if (!stage) return;
@@ -288,6 +340,7 @@
     const card = queue[state.currentCardIndex];
     const boxNum = Math.min(6, Math.max(1, Number(card.box || card.leitnerBox || 1)));
     const intervals = Constants.computeAnkiNextIntervals(card);
+    const richBack = getRichBackDataForCard(card);
 
     stage.innerHTML = `
       <div class="ca-flashcard">
@@ -312,13 +365,28 @@
         ${
           !state.isAnswerShown
             ? `<button type="button" id="popup-show-answer-btn" class="ca-show-answer-btn">
-                 👁 نمایش پاسخ و زمان‌بندی AnkiDroid
+                 👁 نمایش پشت کارت (معانی کامل + جملات کاربردی)
                </button>`
             : `
               <div class="ca-card-back">
                 <div class="ca-back-header">
                   <div class="ca-meaning-fa">${escapeHtml(card.translation || card.word)}</div>
                   <button type="button" id="popup-toggle-edit-back" class="ca-edit-back-btn">✏️ ویرایش پشت کارت</button>
+                </div>
+
+                <!-- MULTI-POS MEANINGS ON CARD BACK -->
+                <div style="margin:6px 0;padding:7px 9px;background:rgba(15,23,42,0.55);border:1px solid rgba(148,163,184,0.18);border-radius:9px;">
+                  <div style="font-size:10px;font-weight:800;color:#94a3b8;margin-bottom:4px;">📚 معانی مختلف به تفکیک نقش دستوری:</div>
+                  ${richBack.posGroups
+                    .map(
+                      (g) => `
+                        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:2px 0;font-size:11.5px;">
+                          <span dir="rtl" style="color:#f8fafc;font-weight:700;">${escapeHtml((g.meanings || []).join('، '))}</span>
+                          <span dir="ltr" style="color:#34d399;font-size:10px;font-weight:800;text-transform:lowercase;flex-shrink:0;">${escapeHtml(g.pos || 'word')}</span>
+                        </div>
+                      `
+                    )
+                    .join('')}
                 </div>
 
                 ${
@@ -330,6 +398,27 @@
                 ${
                   card.aiExplanation
                     ? `<div class="ca-ai-note">✨ ${escapeHtml(card.aiExplanation)}</div>`
+                    : ''
+                }
+
+                <!-- USAGE EXAMPLE SENTENCES AT BOTTOM OF FLASHCARD BACK -->
+                ${
+                  richBack.usageExamples.length > 0
+                    ? `
+                      <div style="margin:6px 0 8px;padding:7px 9px;background:rgba(30,27,75,0.45);border:1px solid rgba(139,92,246,0.25);border-radius:9px;">
+                        <div style="font-size:10px;font-weight:800;color:#c4b5fd;margin-bottom:4px;">💬 جملات نمونه کاربردی با این معنی:</div>
+                        ${richBack.usageExamples
+                          .map(
+                            (ex) => `
+                              <div style="padding:3px 0;border-bottom:1px dashed rgba(148,163,184,0.12);">
+                                <div dir="ltr" style="font-size:11px;color:#e2e8f0;text-align:left;line-height:1.35;">• "${escapeHtml(ex.en)}"</div>
+                                ${ex.fa ? `<div dir="rtl" style="font-size:10.5px;color:#fde047;margin-top:2px;line-height:1.35;">${escapeHtml(ex.fa)}</div>` : ''}
+                              </div>
+                            `
+                          )
+                          .join('')}
+                      </div>
+                    `
                     : ''
                 }
 
@@ -615,6 +704,20 @@
         }, 2500);
       } catch (_err) {
         // ignore
+      }
+    });
+
+    document.getElementById('popup-save-gemini-key-btn')?.addEventListener('click', async () => {
+      const keyVal = document.getElementById('popup-gemini-key-input')?.value?.trim() || '';
+      const keyStatusEl = document.getElementById('popup-gemini-key-status');
+      await Database.saveSettings({ geminiApiKey: keyVal });
+      state.geminiApiKey = keyVal;
+      await updateFooterWebsiteLink();
+      updateCloudHeaderBadge();
+      if (keyStatusEl) {
+        keyStatusEl.textContent = keyVal
+          ? '✓ کلید هوش مصنوعی Gemini با موفقیت ذخیره و در اکستنشن و سایت فعال شد!'
+          : 'کلید Gemini API پاک شد.';
       }
     });
 

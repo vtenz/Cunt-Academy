@@ -20,10 +20,13 @@ import {
   generateTranscriptCsv,
   detectCollocationAtWord,
   DetectedCollocation,
+  isValidPersianMeaning,
 } from '../utils/linguatubeLogic';
 import {
   requestOnDemandGeminiContextualAnalysis,
+  askGeminiWordQuestion,
   GeminiContextualAnalysis,
+  WordQaTurn,
 } from '../services/geminiService';
 
 interface PlayerSimulatorViewProps {
@@ -121,10 +124,13 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
   const [liveDictCache, setLiveDictCache] = useState<Record<string, LiveLookupResult>>({});
   const [isLoadingDict, setIsLoadingDict] = useState<boolean>(false);
 
-  // Gemini Contextual AI (Lexa AI) On-Demand State
+  // Gemini Contextual AI (Lexa AI) On-Demand State + Interactive Word Q&A State
   const [geminiLoading, setGeminiLoading] = useState<boolean>(false);
   const [geminiResultMap, setGeminiResultMap] = useState<Record<string, GeminiContextualResult>>({});
   const [geminiError, setGeminiError] = useState<string | null>(null);
+  const [wordQaMap, setWordQaMap] = useState<Record<string, WordQaTurn[]>>({});
+  const [wordQaInput, setWordQaInput] = useState<string>('');
+  const [wordQaLoading, setWordQaLoading] = useState<boolean>(false);
 
   // Inline Custom Back-of-Card Editor inside Dictionary Drawer
   const [drawerEditOpen, setDrawerEditOpen] = useState<boolean>(false);
@@ -350,19 +356,27 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
       let posEntries: Array<{ pos: string; terms: string[] }> = [];
       const tatoebaExamples: Array<{ en: string; fa: string; source: 'Tatoeba' | 'Corpus' }> = [];
 
+      const localFallback = lookupComprehensiveLocalDictionary(key);
       try {
         const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=fa&dt=t&dt=bd&dj=1&q=${encodeURIComponent(key)}`;
         const gtxRes = await fetch(gtxUrl);
         if (gtxRes.ok) {
           const data = await gtxRes.json();
           if (Array.isArray(data.sentences)) {
-            translationFa = data.sentences.map((s: { trans?: string }) => s.trans || '').join('').trim();
+            const rawTrans = data.sentences.map((s: { trans?: string }) => s.trans || '').join('').trim();
+            if (isValidPersianMeaning(rawTrans, key)) {
+              translationFa = rawTrans;
+            }
           }
           if (Array.isArray(data.dict)) {
-            posEntries = data.dict.map((d: { pos?: string; terms?: string[] }) => ({
-              pos: d.pos || 'word',
-              terms: Array.isArray(d.terms) ? d.terms.slice(0, 6) : [],
-            }));
+            posEntries = data.dict
+              .map((d: { pos?: string; terms?: string[] }) => ({
+                pos: d.pos || 'word',
+                terms: Array.isArray(d.terms)
+                  ? d.terms.filter((t) => isValidPersianMeaning(t, key)).slice(0, 6)
+                  : [],
+              }))
+              .filter((d: { terms: string[] }) => d.terms.length > 0);
           }
         }
       } catch {
@@ -384,7 +398,7 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
               if (firstDef?.example) {
                 tatoebaExamples.push({
                   en: firstDef.example,
-                  fa: 'مثال کاربردی از پیکره واژگانی (Tatoeba / Oxford)',
+                  fa: localFallback.tatoebaExamples[0]?.fa || activeCue.textFa,
                   source: 'Tatoeba',
                 });
               }
@@ -395,7 +409,13 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
         }
       }
 
+      if (posEntries.length === 0) {
+        posEntries = localFallback.posEntries;
+      }
       const miniMeaningsFa = posEntries.flatMap((p) => p.terms).slice(0, 4);
+      if (!translationFa) {
+        translationFa = miniMeaningsFa[0] || localFallback.translationFa;
+      }
       if (miniMeaningsFa.length === 0 && translationFa) {
         miniMeaningsFa.push(translationFa);
       }
@@ -422,13 +442,10 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
           [key]: {
             word: key,
             phonetic,
-            translationFa: translationFa || miniMeaningsFa[0] || 'واژه / عبارت منتخب',
-            miniMeaningsFa: miniMeaningsFa.length > 0 ? miniMeaningsFa : ['معنی در بافت جمله'],
+            translationFa: translationFa || localFallback.translationFa,
+            miniMeaningsFa: miniMeaningsFa.length > 0 ? miniMeaningsFa : localFallback.miniMeaningsFa,
             aiExplanationFa,
-            posEntries:
-              posEntries.length > 0
-                ? posEntries
-                : [{ pos: primaryPos, terms: [translationFa || 'معنی در بافت جمله'] }],
+            posEntries,
             englishDefinition:
               englishDefinition || `Contextual occurrence in "${activeCue.textEn}"`,
             tatoebaExamples,
@@ -492,6 +509,43 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
   };
 
   const activeGeminiResult = geminiResultMap[`${currentDictEntry.word}::${activeCue.id}`] || null;
+  const activeWordQaKey = `${currentDictEntry.word}::${activeCue.id}`;
+  const activeWordQaHistory = wordQaMap[activeWordQaKey] || [];
+
+  const handleAskWordQuestion = async (rawQuestion?: string) => {
+    const qText = String(rawQuestion ?? wordQaInput).trim();
+    if (!qText || wordQaLoading) return;
+    setWordQaInput('');
+    setWordQaLoading(true);
+    const nextHistory: WordQaTurn[] = [...activeWordQaHistory, { role: 'user', text: qText }];
+    setWordQaMap((prev) => ({
+      ...prev,
+      [activeWordQaKey]: nextHistory,
+    }));
+    try {
+      const res = await askGeminiWordQuestion({
+        wordOrPhrase: currentDictEntry.word,
+        sentenceEn: activeCue.textEn,
+        sentenceFa: activeCue.textFa,
+        question: qText,
+        history: nextHistory,
+      });
+      setWordQaMap((prev) => ({
+        ...prev,
+        [activeWordQaKey]: [...nextHistory, { role: 'ai', text: res.answerFa }],
+      }));
+    } catch (err) {
+      setWordQaMap((prev) => ({
+        ...prev,
+        [activeWordQaKey]: [
+          ...nextHistory,
+          { role: 'ai', text: err instanceof Error ? err.message : String(err) },
+        ],
+      }));
+    } finally {
+      setWordQaLoading(false);
+    }
+  };
 
   const concordanceExamples = useMemo(
     () => findInVideoExamples(cues, selectedPhrase),
@@ -806,22 +860,22 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
             {!floatingPopupOpen && !trancyStyleDrawerOpen && !hoveredWordInfo && (
               <div className="my-auto flex flex-col items-center justify-center text-center py-6 pointer-events-none">
                 <div className="text-xs uppercase tracking-widest text-violet-400/90 font-bold mb-1.5">
-                  Cunt Academy v4.5 — Instant Multi-POS Dictionary + Lexa AI (Gemini) + Anki SM-2
+                  Cunt Academy v4.7 — Instant Multi-POS Dictionary + Gemini Interactive Q&amp;A + Anki SM-2
                 </div>
                 <p className="text-xs text-slate-400 max-w-xl leading-relaxed" dir="rtl">
                   • <strong>دیکشنری چندمعنایی فوری (۰ میلی‌ثانیه تأخیر):</strong> روی هر کلمه کلیک یا هاور کنید تا معانی کامل آن در نقش‌های دستوری مختلف (Noun, Verb, Adjective, Phrasal Verb) فوراً نمایش داده شود.
-                  <br />• <strong>تحلیل هوشمند بافت جمله (Lexa AI / Gemini):</strong> در پنجره دیکشنری سمت راست، دکمه{' '}
-                  <span className="text-emerald-300 font-bold">✨ تحلیل معنی در این جمله با Gemini</span> را بزنید و معنی دلخواه را مستقیم به پشت فلش‌کارت Anki اضافه کنید!
+                  <br />• <strong>پرسش و پاسخ هوشمند از هوش مصنوعی درباره کلمه:</strong> در پنجره دیکشنری سمت راست، علاوه بر دکمه{' '}
+                  <span className="text-emerald-300 font-bold">✨ تحلیل معنی در این جمله با Gemini</span>، می‌توانید هر سوالی درباره کلمه دارید همان‌جا بپرسید!
                 </p>
               </div>
             )}
 
-            {/* RIGHT-SIDE SLIDE-OVER PLAYER DICTIONARY DRAWER (Multi-POS + Lexa AI Gemini + Editable Back of Card) */}
+            {/* RIGHT-SIDE SLIDE-OVER PLAYER DICTIONARY DRAWER (Multi-POS + Lexa AI Gemini + Interactive Word Q&A + Editable Back of Card) */}
             {settings.lrEnabled && floatingPopupOpen && (
               <div
                 data-testid="floating-dictionary-popup"
                 onClick={(e) => e.stopPropagation()}
-                className="absolute top-3 right-3 bottom-16 z-30 w-full max-w-[405px] bg-[#131F24] border-2 border-b-4 border-[#37464F] rounded-3xl flex flex-col overflow-hidden text-left"
+                className="absolute top-3 right-3 bottom-16 z-30 w-full max-w-[415px] bg-[#131F24] border-2 border-b-4 border-[#37464F] rounded-3xl flex flex-col overflow-hidden text-left"
               >
                 {/* Top Status Action Strip: Known (Green) | Learn (Orange) | Ignore (Purple) */}
                 <div className="flex items-center gap-1.5 px-3 py-2 bg-[#0B0D14] border-b border-white/10">
@@ -994,7 +1048,7 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                   </div>
                 )}
 
-                {/* Dictionary Body: Multi-POS Meanings + On-Demand Gemini Lexa AI + Examples */}
+                {/* Dictionary Body: Multi-POS Meanings + On-Demand Gemini Lexa AI + Interactive Word Q&A + Examples */}
                 <div className="p-3 space-y-2.5 flex-1 overflow-y-auto text-xs">
                   {/* Comprehensive Multi-POS Meanings (Noun, Verb, Adjective, Phrasal Verb) */}
                   <div className="space-y-1.5 bg-[#0B0D14]/70 p-2.5 rounded-xl border border-white/10">
@@ -1013,16 +1067,16 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                     ))}
                   </div>
 
-                  {/* STRICTLY ON-DEMAND GEMINI AI CONTEXTUAL EXPLANATION SECTION */}
+                  {/* GEMINI AI CONTEXTUAL EXPLANATION + INTERACTIVE WORD Q&A CHAT */}
                   <div
                     dir="rtl"
                     data-testid="lexa-ai-contextual-box"
-                    className="p-3 rounded-xl bg-gradient-to-br from-violet-950/60 via-[#151828] to-emerald-950/40 border border-violet-500/40 space-y-2"
+                    className="p-3 rounded-xl bg-gradient-to-br from-violet-950/60 via-[#151828] to-emerald-950/40 border border-violet-500/40 space-y-2.5"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] font-extrabold text-violet-200 flex items-center gap-1">
                         <span>✨</span>
-                        <span>تحلیل هوشمند Google Gemini 2.5 Flash (فقط با کلیک شما)</span>
+                        <span>هوش مصنوعی Google Gemini — تحلیل و پرسش درباره واژه</span>
                       </span>
                       <button
                         type="button"
@@ -1058,17 +1112,6 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                             {activeGeminiResult.mnemonicFa}
                           </div>
                         )}
-                        {activeGeminiResult.allMeaningsByPos &&
-                          activeGeminiResult.allMeaningsByPos.length > 0 && (
-                            <div className="space-y-1 pt-1">
-                              {activeGeminiResult.allMeaningsByPos.map((grp, gIdx) => (
-                                <div key={gIdx} className="text-slate-300">
-                                  <strong className="text-sky-300 font-mono">{grp.pos}:</strong>{' '}
-                                  {grp.meaningsFa.join('، ')}
-                                </div>
-                              ))}
-                            </div>
-                          )}
                         <button
                           type="button"
                           onClick={() =>
@@ -1090,12 +1133,81 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                           <div className="text-rose-300 font-bold">⚠️ {geminiError}</div>
                         ) : (
                           <span>
-                            برای دریافت معنی دقیق «{currentDictEntry.word}» در این دیالوگ، تحلیل گرامری و تکنیک حفظ کردن با هوش مصنوعی گوگل، روی دکمه{' '}
-                            <strong className="text-violet-300">«✨ تحلیل هوشمند در این جمله»</strong> کلیک کنید. (بدون کلیک شما هیچ مصرفی از API انجام نمی‌شود).
+                            برای دریافت معنی دقیق «{currentDictEntry.word}» در این دیالوگ، روی{' '}
+                            <strong className="text-violet-300">«✨ تحلیل هوشمند در این جمله»</strong> کلیک کنید یا سوال خود را در کادر زیر بپرسید:
                           </span>
                         )}
                       </div>
                     )}
+
+                    {/* Interactive "Ask AI About This Word" Q&A Chat inside Dictionary Drawer */}
+                    <div className="pt-2 border-t border-white/15 space-y-2">
+                      <div className="text-[10.5px] font-extrabold text-violet-200">
+                        💬 هر سوالی درباره «{currentDictEntry.word}» در این زیرنویس دارید از Gemini بپرسید:
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {[
+                          'تفاوت معنایی و مترادف‌ها؟',
+                          'چرا در این جمله این معنی را می‌دهد؟',
+                          '۲ مثال کاربردی دیگر بده',
+                          'رسمی است یا عامیانه؟',
+                        ].map((chipText) => (
+                          <button
+                            key={chipText}
+                            type="button"
+                            onClick={() => handleAskWordQuestion(chipText)}
+                            className="px-2 py-0.5 rounded-full bg-violet-500/20 hover:bg-violet-500/35 border border-violet-400/35 text-violet-100 text-[10px] font-bold transition-colors"
+                          >
+                            {chipText}
+                          </button>
+                        ))}
+                      </div>
+
+                      {activeWordQaHistory.length > 0 && (
+                        <div
+                          data-testid="dict-word-qa-history"
+                          className="max-h-36 overflow-y-auto space-y-1.5 p-2 rounded-lg bg-[#0B0D14]/80 border border-white/10"
+                        >
+                          {activeWordQaHistory.map((turn, tIdx) => (
+                            <div
+                              key={tIdx}
+                              className={`p-2 rounded-lg text-[11px] leading-relaxed whitespace-pre-line ${
+                                turn.role === 'user'
+                                  ? 'bg-violet-500/20 border border-violet-400/30 text-violet-100 font-bold'
+                                  : 'bg-emerald-500/15 border border-emerald-400/30 text-emerald-100'
+                              }`}
+                            >
+                              {turn.role === 'user' ? `❓ شما: ${turn.text}` : turn.text}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleAskWordQuestion();
+                        }}
+                        className="flex items-center gap-1.5"
+                      >
+                        <input
+                          type="text"
+                          value={wordQaInput}
+                          onChange={(e) => setWordQaInput(e.target.value)}
+                          placeholder={`سوال شما درباره "${currentDictEntry.word}"...`}
+                          data-testid="dict-word-qa-input"
+                          className="flex-1 bg-[#0B0D14] border border-violet-400/40 rounded-lg px-2.5 py-1.5 text-[11px] text-white focus:outline-none focus:border-violet-300"
+                        />
+                        <button
+                          type="submit"
+                          disabled={wordQaLoading}
+                          data-testid="dict-word-qa-send-btn"
+                          className="px-3 py-1.5 rounded-lg bg-[#CE82FF] hover:bg-[#b968f0] disabled:opacity-50 text-white text-[11px] font-black shrink-0"
+                        >
+                          {wordQaLoading ? '...' : 'پرسش ✨'}
+                        </button>
+                      </form>
+                    </div>
                   </div>
 
                   {/* Examples: Current text */}

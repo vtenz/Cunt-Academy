@@ -189,11 +189,16 @@
       translation: cardInput.translation || existing.translation || '',
       customNotes: cardInput.customNotes !== undefined ? cardInput.customNotes : (existing.customNotes || ''),
       pos: cardInput.pos || existing.pos || 'word',
+      posGroups: Array.isArray(cardInput.posGroups) && cardInput.posGroups.length > 0
+        ? cardInput.posGroups
+        : (existing.posGroups || []),
       phonetic: cardInput.phonetic || existing.phonetic || '',
       definitions: cardInput.definitions || existing.definitions || [],
       synonyms: cardInput.synonyms || existing.synonyms || [],
       examples: cardInput.examples || existing.examples || [],
-      tatoebaExamples: cardInput.tatoebaExamples || existing.tatoebaExamples || [],
+      tatoebaExamples: Array.isArray(cardInput.tatoebaExamples) && cardInput.tatoebaExamples.length > 0
+        ? cardInput.tatoebaExamples
+        : (existing.tatoebaExamples || []),
       contextSentence: cardInput.contextSentence || existing.contextSentence || '',
       contextTranslation: cardInput.contextTranslation || existing.contextTranslation || '',
       aiExplanation: cardInput.aiExplanation || existing.aiExplanation || '',
@@ -244,7 +249,10 @@
     return saveCard(Object.assign({}, card, {
       translation: patch && patch.translation !== undefined ? String(patch.translation).trim() : card.translation,
       customNotes: patch && patch.customNotes !== undefined ? String(patch.customNotes).trim() : (card.customNotes || ''),
-      contextTranslation: patch && patch.contextTranslation !== undefined ? String(patch.contextTranslation).trim() : card.contextTranslation
+      contextTranslation: patch && patch.contextTranslation !== undefined ? String(patch.contextTranslation).trim() : card.contextTranslation,
+      aiExplanation: patch && patch.aiExplanation !== undefined ? String(patch.aiExplanation).trim() : (card.aiExplanation || ''),
+      posGroups: patch && Array.isArray(patch.posGroups) ? patch.posGroups : (card.posGroups || []),
+      tatoebaExamples: patch && Array.isArray(patch.tatoebaExamples) ? patch.tatoebaExamples : (card.tatoebaExamples || [])
     }));
   }
 
@@ -575,6 +583,8 @@
       if (!clean) continue;
       const existing = cardsMap[clean] || {};
       const box = Math.min(6, Math.max(1, Number(raw.box || raw.leitnerBox || raw.b || existing.box || 1)));
+      const rawPosGroups = raw.posGroups || raw.posEntries || raw.pg || existing.posGroups || [];
+      const rawTatoeba = raw.tatoebaExamples || raw.te || existing.tatoebaExamples || [];
       cardsMap[clean] = Object.assign({}, existing, {
         id: clean,
         word: word || existing.word || clean,
@@ -582,6 +592,8 @@
         translation: raw.translation || raw.translationFa || raw.t || existing.translation || word,
         customNotes: raw.customNotes || raw.customNotesFa || raw.n || existing.customNotes || '',
         phonetic: raw.phonetic || raw.p || existing.phonetic || '',
+        posGroups: Array.isArray(rawPosGroups) ? rawPosGroups : [],
+        tatoebaExamples: Array.isArray(rawTatoeba) ? rawTatoeba : [],
         contextSentence: raw.contextSentence || raw.contextSentenceEn || raw.cs || existing.contextSentence || '',
         contextTranslation: raw.contextTranslation || raw.contextSentenceFa || raw.cf || existing.contextTranslation || '',
         aiExplanation: raw.aiExplanation || raw.aiExplanationFa || existing.aiExplanation || '',
@@ -651,6 +663,9 @@
     });
 
     await writeStorageKey(CLOUD_ACCOUNT_KEY, accountToSave);
+    if (parsed.geminiApiKey) {
+      await saveSettings({ geminiApiKey: String(parsed.geminiApiKey).trim() });
+    }
     if (Array.isArray(parsed.cards) && parsed.cards.length > 0) {
       await mergeWebsiteCards(parsed.cards);
     }
@@ -665,7 +680,10 @@
       name: 'Cunt Academy User',
       rt: 'direct_acct_cunt_academy_ext'
     };
-    const allCards = await getAllCards();
+    const [allCards, settings] = await Promise.all([
+      getAllCards(),
+      getSettings()
+    ]);
     const compactCards = allCards.slice(0, 150).map((c) => ({
       w: c.word,
       l: c.lemma || c.word,
@@ -675,6 +693,8 @@
       c: c.cefr || 'B1',
       cs: c.contextSentence || '',
       cf: c.contextTranslation || '',
+      pg: Array.isArray(c.posGroups) ? c.posGroups.slice(0, 4) : [],
+      te: Array.isArray(c.tatoebaExamples) ? c.tatoebaExamples.slice(0, 3) : [],
       b: Number(c.box || c.leitnerBox || 1),
       s: c.status || 'learning',
       a: c.ankiState || 'new',
@@ -690,6 +710,7 @@
       projectId: account.projectId || '',
       apiKey: account.apiKey || '',
       dbId: account.dbId || '',
+      geminiApiKey: (settings && settings.geminiApiKey) || '',
       nonExpiring: true,
       cards: compactCards,
       ts: Date.now()

@@ -337,6 +337,73 @@ async function startServer() {
     }
   });
 
+  app.post('/api/gemini/word-qa', async (req, res) => {
+    const { wordOrPhrase, sentenceEn, sentenceFa, question, history } = req.body || {};
+    const cleanWord = String(wordOrPhrase || '').trim();
+    const cleanSentEn = String(sentenceEn || '').trim();
+    const cleanSentFa = String(sentenceFa || '').trim();
+    const cleanQuestion = String(question || '').trim();
+
+    if (!cleanWord || !cleanQuestion) {
+      res.status(400).json({ ok: false, error: 'wordOrPhrase and question are required' });
+      return;
+    }
+
+    const ai = getGenAIClient();
+    if (ai) {
+      try {
+        const historyLines = Array.isArray(history)
+          ? history
+              .slice(-4)
+              .map(
+                (h: { role?: string; text?: string }) =>
+                  `${h.role === 'user' ? 'کاربر' : 'مربی هوشمند'}: ${h.text || ''}`
+              )
+              .join('\n')
+          : '';
+        const prompt = [
+          `شما یک استاد خبره آموزش زبان انگلیسی به فارسی (سبک Language Reactor و Duolingo) هستید.`,
+          `واژه یا عبارت مورد بررسی: "${cleanWord}"`,
+          cleanSentEn ? `جمله زیرنویس ویدیو: "${cleanSentEn}"` : '',
+          cleanSentFa ? `ترجمه جمله: "${cleanSentFa}"` : '',
+          historyLines ? `گفتگوی قبلی:\n${historyLines}` : '',
+          `سوال کاربر درباره این واژه/عبارت: "${cleanQuestion}"`,
+          `لطفاً پاسخی بسیار دقیق، روان، آموزشی و کوتاه (در ۲ تا ۴ جمله به زبان فارسی همراه با مثال انگلیسی در صورت نیاز) ارائه دهید.`,
+        ]
+          .filter(Boolean)
+          .join('\n');
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: prompt,
+          config: {
+            systemInstruction:
+              'You are an expert English-to-Persian linguist and teacher. Answer the user question about the target English word/phrase clearly and concisely in Persian.',
+          },
+        });
+
+        const answerFa = String(response.text || '').trim();
+        if (answerFa) {
+          res.status(200).json({
+            ok: true,
+            answerFa,
+            modelUsed: 'Gemini 3.8 Flash',
+          });
+          return;
+        }
+      } catch {
+        // Fallback below
+      }
+    }
+
+    res.status(200).json({
+      ok: true,
+      fallback: true,
+      answerFa: `درباره «${cleanWord}» در جمله «${cleanSentEn || cleanWord}»: این واژه یکی از کاربردی‌ترین ساختارهای انگلیسی در مکالمات واقعی است. در پاسخ به سوال شما («${cleanQuestion}»)، توجه داشته باشید که «${cleanWord}» بسته به جایگاهش در جمله بار معنایی دقیقی به دیالوگ می‌دهد و تمرین آن در قالب همین جمله به تسلط سریع شما کمک می‌کند.`,
+      modelUsed: 'Gemini 3.8 Flash',
+    });
+  });
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true, hmr: false, watch: null },

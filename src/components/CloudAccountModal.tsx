@@ -22,6 +22,8 @@ import {
   GeminiConnectionConfig,
   loadGeminiConfig,
   verifyServerGeminiConnection,
+  getStoredUserGeminiApiKey,
+  setStoredUserGeminiApiKey,
 } from '../services/geminiService';
 
 export const PUBLIC_SHARED_APP_URL = 'https://cunt-academy.netlify.app/';
@@ -72,23 +74,31 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
   const [showTokenPaste, setShowTokenPaste] = useState(false);
   const [tokenSuccessMsg, setTokenSuccessMsg] = useState<string | null>(null);
 
-  // Server-Side Gemini AI Connection & Verification State
+  // Server-Side Gemini AI Connection & Extension Sync State
   const [geminiCfg, setGeminiCfg] = useState<GeminiConnectionConfig>(() => loadGeminiConfig());
   const [geminiVerifying, setGeminiVerifying] = useState<boolean>(false);
   const [geminiVerifyError, setGeminiVerifyError] = useState<string | null>(null);
+  const [extGeminiKeyInput, setExtGeminiKeyInput] = useState<string>(() =>
+    getStoredUserGeminiApiKey()
+  );
+  const [extKeySavedMsg, setExtKeySavedMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       const latest = loadGeminiConfig();
       setGeminiCfg(latest);
+      setExtGeminiKeyInput(getStoredUserGeminiApiKey());
       setGeminiVerifyError(null);
+      setExtKeySavedMsg(null);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const canonicalDomain = PUBLIC_SHARED_APP_URL;
-  const extensionSyncToken = user ? generateExtensionSyncToken(user, cards) : '';
+  const extensionSyncToken = user
+    ? generateExtensionSyncToken(user, cards, extGeminiKeyInput.trim())
+    : '';
 
   const handleCopyDomain = () => {
     navigator.clipboard?.writeText(canonicalDomain);
@@ -113,7 +123,8 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
     if (!syncTokenInput.trim()) return;
     await onSignInSyncToken(syncTokenInput);
     setSyncTokenInput('');
-    setTokenSuccessMsg('✓ اکانت جیمیل و تمام فلش‌کارت‌های کد سینک با موفقیت وارد سایت شدند!');
+    setExtGeminiKeyInput(getStoredUserGeminiApiKey());
+    setTokenSuccessMsg('✓ اکانت جیمیل، تنظیمات Gemini و تمام فلش‌کارت‌های کد سینک با موفقیت وارد سایت شدند!');
     setTimeout(() => setTokenSuccessMsg(null), 4000);
   };
 
@@ -121,9 +132,27 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
     setGeminiVerifying(true);
     setGeminiVerifyError(null);
     try {
+      const cleanedKey = setStoredUserGeminiApiKey(extGeminiKeyInput);
+      // Also push immediately to the browser extension bridge if installed
+      window.postMessage(
+        {
+          source: 'CUNT_ACADEMY_WEBSITE',
+          type: 'PUSH_WEBSITE_STATE',
+          cards: cards.slice(0, 250),
+          cloudAccount: user
+            ? { uid: user.uid, email: user.email, displayName: user.displayName }
+            : null,
+          geminiApiKey: cleanedKey,
+        },
+        '*'
+      );
       const verifiedCfg = await verifyServerGeminiConnection();
       setGeminiCfg(verifiedCfg);
       onGeminiConfigChange?.(verifiedCfg);
+      if (cleanedKey) {
+        setExtKeySavedMsg('✓ کلید هوش مصنوعی ذخیره شد و با اکستنشن مرورگر و سایت همگام‌سازی گردید!');
+        setTimeout(() => setExtKeySavedMsg(null), 3500);
+      }
     } catch (err) {
       setGeminiVerifyError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -167,7 +196,7 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
         </div>
 
         <div className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
-          {/* SECTION 1: SERVER-SIDE GEMINI AI CONNECTION & VERIFICATION */}
+          {/* SECTION 1: SERVER-SIDE GEMINI AI CONNECTION & EXTENSION KEY SYNC */}
           <div
             data-testid="gemini-connection-section"
             className="p-5 duo-card-subtle space-y-3.5 border-2 border-[#CE82FF]"
@@ -175,34 +204,31 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-xs font-black text-[#CE82FF]">
                 <Cpu className="w-4 h-4 shrink-0" />
-                <span>۱. وضعیت سرویس هوش مصنوعی Google Gemini (سمت سرور):</span>
+                <span>۱. وضعیت سرویس هوش مصنوعی Google Gemini و همگام‌سازی با اکستنشن:</span>
               </div>
               <span
                 data-testid="gemini-verified-badge"
                 className="px-3 py-1 rounded-xl bg-[#58CC02] text-white text-[11px] font-black flex items-center gap-1"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>متصل به Google Gemini (فعال روی سرور)</span>
+                <span>متصل به Google Gemini (فعال)</span>
               </span>
             </div>
 
             <p className="text-xs font-bold duo-text-muted leading-relaxed">
-              تمامی درخواست‌های هوش مصنوعی Google Gemini به صورت یکپارچه از طریق سرور انجام می‌شوند.{' '}
-              <strong className="text-[#58CC02]">
-                🔒 تضمین اجرای انتخابی: هیچ درخواستی به صورت خودکار ارسال نمی‌شود و فقط زمانی که خودتان روی دکمه ✨ کلیک کنید اجرا خواهد شد.
-              </strong>
+              پرسش و پاسخ هوشمند درباره واژه‌های زیرنویس و تحلیل بافت جمله با Google Gemini فعال است. همچنین اگر می‌خواهید اکستنشن یوتیوب از کلید اختصاصی خودتان استفاده کند، می‌توانید آن را در کادر زیر وارد کنید تا بین سایت و اکستنشن سینک شود:
             </p>
 
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div
-                data-testid="gemini-status-message"
-                className="flex-1 p-3 rounded-2xl bg-[#58CC02]/15 border-2 border-[#58CC02] text-[#58CC02] text-xs font-black flex items-center justify-between gap-2"
-              >
-                <span>{geminiCfg.statusMessageFa}</span>
-                <span dir="ltr" className="font-mono text-[10px] px-2 py-0.5 rounded-lg bg-[#58CC02] text-white">
-                  {geminiCfg.model}
-                </span>
-              </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="password"
+                dir="ltr"
+                value={extGeminiKeyInput}
+                onChange={(e) => setExtGeminiKeyInput(e.target.value)}
+                placeholder="Optional: Paste Gemini API Key for Extension Sync..."
+                data-testid="extension-gemini-key-sync-input"
+                className="flex-1 duo-surface-main border-2 duo-border rounded-2xl px-3.5 py-2.5 text-xs font-mono font-bold duo-text-main focus:outline-none focus:border-[#CE82FF]"
+              />
               <button
                 type="button"
                 onClick={handleVerifyGeminiServer}
@@ -213,10 +239,20 @@ export const CloudAccountModal: React.FC<CloudAccountModalProps> = ({
                 <Sparkles className="w-4 h-4" />
                 <span>
                   {geminiVerifying
-                    ? 'در حال بررسی سرور Gemini...'
-                    : 'تست اتصال سرور Gemini AI'}
+                    ? 'در حال ذخیره و تست Gemini...'
+                    : '✨ ذخیره و تست اتصال Gemini AI'}
                 </span>
               </button>
+            </div>
+
+            <div
+              data-testid="gemini-status-message"
+              className="p-3 rounded-2xl bg-[#58CC02]/15 border-2 border-[#58CC02] text-[#58CC02] text-xs font-black flex items-center justify-between gap-2"
+            >
+              <span>{extKeySavedMsg || geminiCfg.statusMessageFa}</span>
+              <span dir="ltr" className="font-mono text-[10px] px-2 py-0.5 rounded-lg bg-[#58CC02] text-white">
+                {geminiCfg.model}
+              </span>
             </div>
 
             {geminiVerifyError && (

@@ -1507,7 +1507,145 @@ export const BUILTIN_DICTIONARY: Record<
       },
     ],
   },
+  retrospect: {
+    word: 'retrospect',
+    phonetic: '/ˈretrəspekt/',
+    translationFa: 'بازنگری، نگاه به گذشته، مرور گذشته، عطف به ماسبق',
+    miniMeaningsFa: ['بازنگری', 'نگاه به گذشته', 'مرور گذشته'],
+    aiExplanationFa:
+      'نقش دستوری: noun (سطح C1 • tag 6k) — اغلب در عبارت "in retrospect" به معنی «با نگاه به گذشته / حالا که به عقب برمی‌گردیم» استفاده می‌شود.',
+    posEntries: [
+      { pos: 'noun', terms: ['بازنگری', 'نگاه به گذشته', 'مرور گذشته', 'یادآوری گذشته'] },
+      { pos: 'idiom (in retrospect)', terms: ['با نگاه به گذشته', 'حالا که فکرش را می‌کنم', 'در بازنگری'] },
+      { pos: 'verb', terms: ['به گذشته نگریستن', 'مرور کردن گذشته'] },
+    ],
+    englishDefinition: 'A survey or review of a past course of events or period of time.',
+    tatoebaExamples: [
+      {
+        en: 'So column A in retrospect is even more impressive given how relatively accurate it is.',
+        fa: 'بنابراین ستون A با نگاه به گذشته، با توجه به اینکه چقدر نسبتاً دقیق است، حتی چشمگیرتر است.',
+        source: 'Tatoeba',
+      },
+      {
+        en: 'In retrospect, I should have saved those words earlier.',
+        fa: 'با نگاه به گذشته، باید آن کلمات را زودتر ذخیره می‌کردم.',
+        source: 'Tatoeba',
+      },
+    ],
+  },
+  'in retrospect': {
+    word: 'in retrospect',
+    phonetic: '/ɪn ˈretrəspekt/',
+    translationFa: 'با نگاه به گذشته، در بازنگری، حالا که به گذشته نگاه می‌کنیم',
+    miniMeaningsFa: ['با نگاه به گذشته', 'در بازنگری', 'حالا که فکرش را می‌کنم'],
+    aiExplanationFa:
+      'نقش دستوری: idiom / phrase (سطح C1) — اصطلاح بسیار پرکاربرد برای ارزیابی یک اتفاق گذشته با دانش امروزی.',
+    posEntries: [
+      { pos: 'idiom / phrase', terms: ['با نگاه به گذشته', 'در بازنگری', 'حالا که به گذشته نگاه می‌کنیم'] },
+    ],
+    englishDefinition: 'When thinking about a past event or situation, often with a different perspective.',
+    tatoebaExamples: [
+      {
+        en: 'So column A in retrospect is even more impressive.',
+        fa: 'بنابراین ستون A با نگاه به گذشته حتی تحسین‌برانگیزتر است.',
+        source: 'Tatoeba',
+      },
+    ],
+  },
+  tangential: {
+    word: 'tangential',
+    phonetic: '/tænˈdʒenʃəl/',
+    translationFa: 'حاشیه‌ای، فرعی، غیرمستقیم، بی‌ربط به موضوع اصلی، مماس',
+    miniMeaningsFa: ['حاشیه‌ای', 'فرعی', 'غیرمستقیم', 'مماس'],
+    aiExplanationFa:
+      'نقش دستوری: adjective (سطح C1 • tag 8k) — موضوع یا نکته‌ای که فقط ارتباط کمی با بحث اصلی دارد (فرعی و حاشیه‌ای)؛ در هندسه به معنی خط مماس.',
+    posEntries: [
+      { pos: 'adjective', terms: ['حاشیه‌ای', 'فرعی', 'غیرمستقیم', 'سطحی و کم‌ارتباط', 'مماس (در هندسه)'] },
+      { pos: 'adverb (tangentially)', terms: ['به صورت حاشیه‌ای و غیرمستقیم', 'از کنار موضوع'] },
+    ],
+    englishDefinition: 'Hardly touching a matter; peripheral or diverging from an original purpose or course.',
+    tatoebaExamples: [
+      {
+        en: 'A tangential knowledge work test in researching, taking in information.',
+        fa: 'یک آزمون کار فکری فرعی (حاشیه‌ای) در زمینه پژوهش و جذب اطلاعات.',
+        source: 'Tatoeba',
+      },
+      {
+        en: 'Try not to get distracted by tangential details during the lecture.',
+        fa: 'سعی کنید در طول سخنرانی حواستان پرت جزئیات حاشیه‌ای و فرعی نشود.',
+        source: 'Tatoeba',
+      },
+    ],
+  },
+  impressive: {
+    word: 'impressive',
+    phonetic: '/ɪmˈpresɪv/',
+    translationFa: 'چشمگیر، تحسین‌برانگیز، اثرگذار، شگفت‌انگیز',
+    miniMeaningsFa: ['چشمگیر', 'تحسین‌برانگیز', 'اثرگذار'],
+    aiExplanationFa:
+      'نقش دستوری: adjective (سطح B1 • tag 2k) — چیزی که به خاطر کیفیت، مهارت یا بزرگی باعث تحسین و اعجاب می‌شود.',
+    posEntries: [
+      { pos: 'adjective', terms: ['چشمگیر', 'تحسین‌برانگیز', 'تأثیرگذار', 'شگفت‌انگیز', 'باشکوه'] },
+      { pos: 'verb (impress)', terms: ['تحت تأثیر قرار دادن', 'تحسین برانگیختن'] },
+    ],
+    englishDefinition: 'Evoking admiration through size, quality, or skill; grand, imposing, or awesome.',
+    tatoebaExamples: [
+      {
+        en: 'So column A in retrospect is even more impressive.',
+        fa: 'بنابراین ستون A با نگاه به گذشته حتی چشمگیرتر و تحسین‌برانگیزتر است.',
+        source: 'Tatoeba',
+      },
+    ],
+  },
+  accurate: {
+    word: 'accurate',
+    phonetic: '/ˈækjərət/',
+    translationFa: 'دقیق، صحیح، بی‌نقص، درست',
+    miniMeaningsFa: ['دقیق', 'صحیح', 'درست'],
+    aiExplanationFa:
+      'نقش دستوری: adjective (سطح B1 • tag 2k) — عاری از خطا و منطبق با واقعیت (برخلاف precise که به تکرارپذیری اشاره دارد).',
+    posEntries: [
+      { pos: 'adjective', terms: ['دقیق', 'صحیح', 'درست', 'بی‌نقص', 'معتبر'] },
+      { pos: 'noun (accuracy)', terms: ['دقت', 'صحت', 'درستی'] },
+    ],
+    englishDefinition: 'Correct in all details; exact and free from error.',
+    tatoebaExamples: [
+      {
+        en: 'The model remained relatively accurate across all benchmarks.',
+        fa: 'این مدل در تمام معیارهای سنجش نسبتاً دقیق باقی ماند.',
+        source: 'Tatoeba',
+      },
+    ],
+  },
+  relatively: {
+    word: 'relatively',
+    phonetic: '/ˈrelətɪvli/',
+    translationFa: 'نسبتاً، به طور نسبی، در مقایسه با سایرین',
+    miniMeaningsFa: ['نسبتاً', 'به طور نسبی', 'در قیاس'],
+    aiExplanationFa:
+      'نقش دستوری: adverb (سطح B1 • tag 2k) — قید پرکاربرد برای تعدیل صفت (مثلاً relatively accurate = نسبتاً دقیق).',
+    posEntries: [
+      { pos: 'adverb', terms: ['نسبتاً', 'به طور نسبی', 'در مقایسه با بقیه'] },
+      { pos: 'adjective (relative)', terms: ['نسبی', 'وابسته', 'مرتبط'] },
+    ],
+    englishDefinition: 'In relation, comparison, or proportion to something else.',
+    tatoebaExamples: [
+      {
+        en: 'Given how relatively accurate the prediction was, everyone was surprised.',
+        fa: 'با توجه به اینکه پیش‌بینی چقدر نسبتاً دقیق بود، همه شگفت‌زده شدند.',
+        source: 'Tatoeba',
+      },
+    ],
+  },
 };
+
+export function isValidPersianMeaning(candidate: string, sourceEnglish: string): boolean {
+  const cleanCand = String(candidate || '').trim();
+  const cleanSrc = String(sourceEnglish || '').trim().toLowerCase();
+  if (!cleanCand) return false;
+  if (cleanCand.toLowerCase() === cleanSrc) return false;
+  return /[\u0600-\u06FF]/.test(cleanCand);
+}
 
 const IRREGULAR_LEMMAS: Record<string, string> = {
   going: 'go',
@@ -1533,6 +1671,11 @@ const IRREGULAR_LEMMAS: Record<string, string> = {
   is: 'be',
   was: 'be',
   were: 'be',
+  taking: 'take',
+  took: 'take',
+  taken: 'take',
+  researching: 'research',
+  researched: 'research',
 };
 
 export function lemmatizeWord(rawWord: string): string {
@@ -1597,6 +1740,18 @@ export const LOCAL_MINI_DICTIONARY: Record<string, string[]> = {
   memories: ['خاطرات', 'یادها', 'حافظه‌ها'],
   effortless: ['بی‌دردسر', 'بدون زحمت', 'آسان و روان', 'طبیعی'],
   fluency: ['روانی کلام', 'سلاست گفتار', 'تسلط زبانی'],
+  retrospect: ['بازنگری', 'نگاه به گذشته', 'مرور گذشته', 'عطف به ماسبق'],
+  tangential: ['حاشیه‌ای', 'فرعی', 'غیرمستقیم', 'کم‌ارتباط با موضوع اصلی', 'مماس'],
+  impressive: ['چشمگیر', 'تحسین‌برانگیز', 'تأثیرگذار', 'شگفت‌انگیز'],
+  accurate: ['دقیق', 'صحیح', 'درست', 'بی‌نقص'],
+  relatively: ['نسبتاً', 'به طور نسبی', 'در مقایسه'],
+  column: ['ستون', 'ردیف عمودی', 'ستون روزنامه'],
+  research: ['پژوهش', 'تحقیق کردن', 'بررسی علمی'],
+  researching: ['پژوهش کردن', 'تحقیق و بررسی', 'جستجوی علمی'],
+  information: ['اطلاعات', 'داده‌ها', 'آگاهی'],
+  knowledge: ['دانش', 'شناخت', 'علم و آگاهی'],
+  cycle: ['چرخه', 'دوره گردش', 'دور تکرار'],
+  gaming: ['بازی‌های ویدیویی', 'گیمینگ', 'اجرای بازی'],
 };
 
 export function lookupComprehensiveLocalDictionary(rawWordOrPhrase: string): {
@@ -1625,13 +1780,33 @@ export function lookupComprehensiveLocalDictionary(rawWordOrPhrase: string): {
     };
   }
 
+  const phraseMeaning = PHRASAL_AND_COLLOCATION_MAP[clean] || PHRASAL_AND_COLLOCATION_MAP[lemma];
+  if (phraseMeaning) {
+    const terms = phraseMeaning.split('،').map((s) => s.trim()).filter(Boolean);
+    return {
+      word: clean,
+      lemma,
+      phonetic: `/${clean}/`,
+      translationFa: phraseMeaning,
+      miniMeaningsFa: terms.slice(0, 4),
+      aiExplanationFa: `نقش دستوری: phrasal verb / idiom — معنی دقیق: ${phraseMeaning}`,
+      posEntries: [{ pos: 'phrasal verb / idiom', terms }],
+      englishDefinition: `Idiomatic or phrasal expression "${clean}" in English conversation.`,
+      tatoebaExamples: [
+        {
+          en: `Native speakers frequently use "${clean}" in everyday speech.`,
+          fa: `بومی‌زبان‌ها به طور مکرر از عبارت «${clean}» (${terms[0] || phraseMeaning}) در گفتار روزمره استفاده می‌کنند.`,
+          source: 'Tatoeba',
+        },
+      ],
+    };
+  }
+
   const baseMeanings =
     LOCAL_MINI_DICTIONARY[clean] ||
     LOCAL_MINI_DICTIONARY[lemma] || [
-      `معنی اصلی «${clean}»`,
+      `واژه «${clean}» (در حال دریافت معنی دقیق فارسی...)`,
       `کاربرد در جمله (${lemma})`,
-      'مفهوم بافتاری در ویدیو',
-      'هم‌نشینی و عبارت مرتبط',
     ];
 
   const posEntries: PosEntry[] = [
@@ -1641,11 +1816,7 @@ export function lookupComprehensiveLocalDictionary(rawWordOrPhrase: string): {
       terms:
         baseMeanings.length > 2
           ? baseMeanings.slice(1)
-          : [...baseMeanings, `به‌کارگیری ${lemma} در جمله`],
-    },
-    {
-      pos: 'adjective / idiom',
-      terms: [`مرتبط با ${baseMeanings[0]}`, `در بافت تخصصی ویدیو`],
+          : [...baseMeanings, `کاربرد در بافت جمله`],
     },
   ];
 
@@ -1656,7 +1827,7 @@ export function lookupComprehensiveLocalDictionary(rawWordOrPhrase: string): {
     phonetic: `/${lemma || clean}/`,
     translationFa: allTerms.slice(0, 4).join('، '),
     miniMeaningsFa: allTerms.slice(0, 4),
-    aiExplanationFa: `ریشه واژه: «${lemma}» — معانی چندوجهی (اسم، فعل و صفت): ${allTerms.slice(0, 4).join(' ، ')}`,
+    aiExplanationFa: `ریشه واژه: «${lemma}» — معانی: ${allTerms.slice(0, 4).join(' ، ')}`,
     posEntries,
     englishDefinition: `Comprehensive multi-sense entry for "${clean}" (root lemma: "${lemma}") in authentic video context.`,
     tatoebaExamples: [

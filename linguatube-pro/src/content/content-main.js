@@ -1021,7 +1021,8 @@
     const instantLocal = Constants && typeof Constants.lookupInstantLocalMultiPos === 'function'
       ? Constants.lookupInstantLocalMultiPos(cleanWord)
       : null;
-    const instantMeanings = savedCard && savedCard.translation
+    const isValidFa = (txt) => Boolean(txt && /[\u0600-\u06FF]/.test(txt) && String(txt).trim().toLowerCase() !== cleanWord.toLowerCase());
+    const instantMeanings = savedCard && isValidFa(savedCard.translation)
       ? savedCard.translation.split('،').map((s) => s.trim()).filter(Boolean)
       : (instantLocal && instantLocal.wordMeanings) || [];
 
@@ -1067,7 +1068,7 @@
     };
 
     renderTooltipDom(
-      instantMeanings.length > 0 ? instantMeanings.slice(0, 4) : ['...'],
+      instantMeanings.length > 0 ? instantMeanings.slice(0, 4) : ['در حال ترجمه...'],
       (collocation && collocation.translationFa) || ''
     );
 
@@ -1081,11 +1082,14 @@
 
     if (!state.isHoveringSubtitleWord || state.hoveredWordIndex !== wordIdx) return;
 
-    const data = (res && res.data) || { word: cleanWord, wordMeanings: instantMeanings.length ? instantMeanings : [cleanWord], phrase: '', phraseMeanings: [] };
+    const data = (res && res.data) || { word: cleanWord, wordMeanings: instantMeanings, phrase: '', phraseMeanings: [] };
     const phraseFa = (collocation && collocation.translationFa) || (data.phraseMeanings && data.phraseMeanings[0]) || '';
-    const wordMeanings = Array.isArray(data.wordMeanings) && data.wordMeanings.length > 0
-      ? data.wordMeanings.slice(0, 5)
-      : (instantMeanings.length ? instantMeanings : [cleanWord]);
+    const validHoverMeanings = Array.isArray(data.wordMeanings)
+      ? data.wordMeanings.filter((m) => isValidFa(m))
+      : [];
+    const wordMeanings = validHoverMeanings.length > 0
+      ? validHoverMeanings.slice(0, 5)
+      : (instantMeanings.length ? instantMeanings : [`واژه: «${cleanWord}»`]);
 
     renderTooltipDom(wordMeanings, phraseFa);
   }
@@ -1104,10 +1108,8 @@
   }
 
   async function openWordDictionaryPopup(rawWordOrPhrase, contextSentence, startIdx = -1, endIdx = -1) {
-    const clean = String(rawWordOrPhrase || '')
-      .toLowerCase()
-      .replace(/^[^a-zA-Z0-9\u00C0-\u024F']+|[^a-zA-Z0-9\u00C0-\u024F']+$/g, '')
-      .trim();
+    const rawDisplay = String(rawWordOrPhrase || '').replace(/^[^a-zA-Z0-9\u00C0-\u024F']+|[^a-zA-Z0-9\u00C0-\u024F']+$/g, '').trim();
+    const clean = rawDisplay.toLowerCase();
     if (!clean || !floatingDictEl || !playerEl) return;
 
     state.selectedRangeStartIdx = startIdx;
@@ -1115,8 +1117,11 @@
     state.pausedByHoverAtCueEnd = false;
     state.hoverLockedCueIndex = -1;
     state.dictEditBackOpen = false;
+    state.dictKeySetupOpen = false;
     state.dictAiResult = null;
     state.dictAiLoading = false;
+    state.dictAiQaHistory = [];
+    state.dictAiQaLoading = false;
     if (hoverTooltipEl) hoverTooltipEl.classList.add('lt-hidden');
 
     if (videoEl && !videoEl.paused) videoEl.pause();
@@ -1130,13 +1135,20 @@
       : null;
     const diffMeta = Constants ? Constants.getWordDifficultyMeta(clean) : { cefr: 'B1', freqTag: 'tag 2k', rank: 1800 };
     const savedExisting = state.savedCardsMap.get(clean);
+    const hasValidSavedFa = Boolean(
+      savedExisting &&
+      savedExisting.translation &&
+      /[\u0600-\u06FF]/.test(savedExisting.translation) &&
+      savedExisting.translation.trim().toLowerCase() !== clean
+    );
 
     const initialData = {
       word: clean,
       lemma: (instantLocal && instantLocal.lemma) || clean,
-      translation: (savedExisting && savedExisting.translation) || (instantLocal && instantLocal.translation) || clean,
+      translation: (hasValidSavedFa ? savedExisting.translation : '') || (instantLocal && instantLocal.translation) || '',
       pos: (instantLocal && instantLocal.pos) || 'word',
-      posGroups: (instantLocal && instantLocal.posGroups) || [],
+      posGroups: (savedExisting && Array.isArray(savedExisting.posGroups) && savedExisting.posGroups.length ? savedExisting.posGroups : (instantLocal && instantLocal.posGroups)) || [],
+      tatoebaExamples: (savedExisting && Array.isArray(savedExisting.tatoebaExamples) && savedExisting.tatoebaExamples.length ? savedExisting.tatoebaExamples : (instantLocal && instantLocal.usageExamples)) || [],
       phonetic: (savedExisting && savedExisting.phonetic) || `/${clean}/`,
       contextSentence: contextSentence || '',
       contextTranslation: '',
@@ -1158,13 +1170,32 @@
 
     const res = await sendExtMessage({
       type: 'LT_LOOKUP_WORD',
-      word: clean,
+      word: rawDisplay || clean,
       contextSentence: contextSentence || '',
       sourceLang: state.settings.sourceLang || 'en',
       targetLang: state.settings.translationLang || 'fa'
     });
 
     if (!res || !res.ok || !res.data) return;
+
+    // Auto-heal & enrich previously saved card if it had an English echo or lacked posGroups/examples
+    if (savedExisting && (!hasValidSavedFa || !Array.isArray(savedExisting.posGroups) || savedExisting.posGroups.length === 0)) {
+      const patch = {
+        translation: hasValidSavedFa ? savedExisting.translation : res.data.translation,
+        posGroups: res.data.posGroups || [],
+        tatoebaExamples: res.data.tatoebaExamples || [],
+        contextTranslation: res.data.contextTranslation || savedExisting.contextTranslation || ''
+      };
+      const updatedRes = await sendExtMessage({
+        type: 'LT_UPDATE_CARD_BACK',
+        id: clean,
+        patch
+      });
+      if (updatedRes && updatedRes.ok && updatedRes.card) {
+        state.savedCardsMap.set(clean, updatedRes.card);
+      }
+    }
+
     if (state.selectedWordInfo && state.selectedWordInfo.word === clean) {
       state.selectedWordInfo = res.data;
       renderFloatingDictionaryContent(res.data);
@@ -1190,12 +1221,22 @@
     const saved = state.savedCardsMap.get(info.word);
     const currentStatus = saved ? saved.status : 'none';
     const isMultiWord = info.word.includes(' ');
-    const displayTranslation = (saved && saved.translation) || info.translation || '';
+    const hasValidSavedFa = Boolean(
+      saved &&
+      saved.translation &&
+      /[\u0600-\u06FF]/.test(saved.translation) &&
+      saved.translation.trim().toLowerCase() !== info.word.toLowerCase()
+    );
+    const displayTranslation = (hasValidSavedFa ? saved.translation : '') || info.translation || 'در حال دریافت معنی دقیق...';
     const displayCustomNotes = (saved && saved.customNotes) || '';
 
-    const posGroupsHtml = Array.isArray(info.posGroups) && info.posGroups.length
+    const posGroupsList = Array.isArray(info.posGroups) && info.posGroups.length
       ? info.posGroups
-          .slice(0, 4)
+      : (saved && Array.isArray(saved.posGroups) && saved.posGroups.length ? saved.posGroups : []);
+
+    const posGroupsHtml = posGroupsList.length
+      ? posGroupsList
+          .slice(0, 5)
           .map(
             (g) => `
           <div class="lt-dict-pos-block">
@@ -1227,13 +1268,17 @@
           </div>`
         : '';
 
-    const tatoebaHtml = Array.isArray(info.tatoebaExamples) && info.tatoebaExamples.length
+    const tatoebaList = Array.isArray(info.tatoebaExamples) && info.tatoebaExamples.length
       ? info.tatoebaExamples
+      : (saved && Array.isArray(saved.tatoebaExamples) ? saved.tatoebaExamples : []);
+
+    const tatoebaHtml = tatoebaList.length
+      ? tatoebaList
           .slice(0, 4)
           .map(
             (ex) => `
           <div class="lt-dict-example-item">
-            <div class="lt-dict-ex-en">${escapeHtml(ex.en)}</div>
+            <div class="lt-dict-ex-en">🔊 ${escapeHtml(ex.en)}</div>
             ${ex.fa ? `<div class="lt-dict-ex-fa" dir="rtl">${escapeHtml(ex.fa)}</div>` : ''}
           </div>`
           )
@@ -1251,6 +1296,8 @@
     const totalWordsInCue = activeCue ? activeCue.text.split(/\s+/).filter(Boolean).length : 0;
     const canExpandRange = state.selectedRangeStartIdx !== -1 && totalWordsInCue > 1;
     const aiRes = state.dictAiResult;
+    const qaHistory = Array.isArray(state.dictAiQaHistory) ? state.dictAiQaHistory : [];
+    const hasSavedGeminiKey = Boolean(state.settings && state.settings.geminiApiKey);
 
     floatingDictEl.innerHTML = `
       <div class="lt-dict-card">
@@ -1312,27 +1359,47 @@
               : ''
           }
 
-          <!-- 5. ALL MEANINGS BY PART OF SPEECH (معانی کامل) -->
+          <!-- 5. ALL MEANINGS BY PART OF SPEECH (معانی کامل به تفکیک نقش دستوری) -->
           <div class="lt-dict-pos-card">
-            <div class="lt-dict-pos-card-header">ALL MEANINGS BY PART OF SPEECH (معانی کامل):</div>
+            <div class="lt-dict-pos-card-header">ALL MEANINGS BY PART OF SPEECH (معانی کامل به تفکیک نقش):</div>
             ${posGroupsHtml}
           </div>
 
-          <!-- 6. Lexa AI (Gemini) — معنی دقیق در این جمله -->
+          <!-- 6. Lexa AI (Gemini) — تحلیل هوشمند + پرسش‌وپاسخ تعاملی درباره این واژه -->
           <div class="lt-dict-ai-card">
-            <div class="lt-dict-ai-header">
-              <span class="lt-dict-ai-title">✨ Lexa AI (Gemini) — معنی دقیق در این جمله</span>
-              <button type="button" class="lt-dict-ai-trigger-btn" id="lt-ask-ai-btn" ${state.dictAiLoading ? 'disabled' : ''}>
-                ${state.dictAiLoading ? 'در حال تحلیل...' : '✨ تحلیل هوشمند در این جمله'}
-              </button>
+            <div class="lt-dict-ai-header" style="flex-wrap:wrap;gap:6px;">
+              <span class="lt-dict-ai-title">✨ Lexa AI (Gemini 2.5) — تحلیل و پرسش‌وپاسخ</span>
+              <div style="display:flex;align-items:center;gap:5px;">
+                <button type="button" id="lt-toggle-gemini-key-btn" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);color:${hasSavedGeminiKey ? '#6ee7b7' : '#fde047'};border-radius:7px;padding:3px 7px;font-size:10px;font-weight:700;cursor:pointer;" title="تنظیم کلید Gemini API">
+                  🔑 ${hasSavedGeminiKey ? 'API فعال' : 'کلید API'}
+                </button>
+                <button type="button" class="lt-dict-ai-trigger-btn" id="lt-ask-ai-btn" ${state.dictAiLoading ? 'disabled' : ''}>
+                  ${state.dictAiLoading ? 'در حال تحلیل...' : '✨ تحلیل هوشمند در این جمله'}
+                </button>
+              </div>
             </div>
+
+            ${
+              state.dictKeySetupOpen
+                ? `
+              <div dir="rtl" style="margin-top:8px;padding:8px;border-radius:8px;background:rgba(15,23,42,0.85);border:1px solid rgba(167,139,250,0.4);">
+                <div style="font-size:10.5px;color:#e2e8f0;margin-bottom:5px;font-weight:700;">
+                  🔑 کلید Google Gemini API خود را وارد کنید (در اکستنشن و سایت ذخیره می‌شود):
+                </div>
+                <div style="display:flex;gap:5px;">
+                  <input type="password" id="lt-inline-gemini-key-input" dir="ltr" value="${escapeHtml((state.settings && state.settings.geminiApiKey) || '')}" placeholder="AIzaSy... (کلید Gemini API)" style="flex:1;background:#090d16;border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:5px 8px;color:#fff;font-size:11px;" />
+                  <button type="button" id="lt-save-inline-gemini-key-btn" style="background:#10b981;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer;">ذخیره</button>
+                </div>
+              </div>`
+                : ''
+            }
 
             ${
               aiRes
                 ? `
               <div class="lt-dict-ai-result" dir="rtl">
                 <div class="lt-dict-ai-highlight-box">
-                  <div class="lt-dict-ai-hl-label">🎯 معنی دقیق در این دیالوگ (${escapeHtml(aiRes.contextualPos || info.pos || 'در بافت جمله')}):</div>
+                  <div class="lt-dict-ai-hl-label">🎯 معنی دقیق در این دیالوگ (${escapeHtml(aiRes.posInSentence || aiRes.contextualPos || info.pos || 'در بافت جمله')}):</div>
                   <div class="lt-dict-ai-hl-value">${escapeHtml(aiRes.contextualMeaningFa || displayTranslation)}</div>
                 </div>
                 ${
@@ -1340,44 +1407,68 @@
                     ? `<div class="lt-dict-ai-sentence-fa">📝 ترجمه روان کل دیالوگ: «${escapeHtml(aiRes.sentenceTranslationFa)}»</div>`
                     : ''
                 }
-                <div class="lt-dict-ai-nuance">${escapeHtml(aiRes.explanationFa || info.aiExplanation || '')}</div>
+                <div class="lt-dict-ai-nuance">${escapeHtml(aiRes.grammarNuanceFa || aiRes.explanationFa || info.aiExplanation || '')}</div>
                 ${
-                  Array.isArray(aiRes.allMeaningsFa) && aiRes.allMeaningsFa.length
-                    ? `<div class="lt-dict-ai-all-pos">
-                        <div style="font-size:10px;color:#cbd5e1;font-weight:700;margin-bottom:3px;">سایر معانی پرکاربرد:</div>
-                        ${aiRes.allMeaningsFa
-                          .slice(0, 4)
-                          .map(
-                            (m) => `
-                          <div style="font-size:11px;line-height:1.45;">
-                            <span style="color:#6ee7b7;font-family:monospace;margin-left:4px;">[${escapeHtml(m.pos)}]</span>
-                            <span style="color:#f4f4f5;">${escapeHtml((m.meaningsFa || []).join('، '))}</span>
-                          </div>`
-                          )
-                          .join('')}
-                      </div>`
+                  aiRes.mnemonicFa
+                    ? `<div style="margin-top:5px;padding:6px 8px;border-radius:7px;background:rgba(139,92,246,0.16);border:1px solid rgba(167,139,250,0.3);color:#ddd6fe;font-size:11px;font-weight:700;">${escapeHtml(aiRes.mnemonicFa)}</div>`
                     : ''
                 }
-                <button type="button" class="lt-dict-ai-save-anki-btn" id="lt-save-ai-anki-btn">
-                  💾 افزودن معنی هوشمند Gemini به پشت فلش‌کارت Anki
+                <button type="button" class="lt-dict-ai-save-anki-btn" id="lt-save-ai-anki-btn" style="margin-top:6px;">
+                  💾 افزودن تحلیل هوشمند Gemini به پشت فلش‌کارت Anki
                 </button>
               </div>`
-                : `<div class="lt-dict-ai-placeholder" dir="rtl">فقط در صورت نیاز شما: برای دریافت تحلیل هوشمند Gemini از نقش این کلمه در همین دیالوگ، روی دکمه بالا کلیک کنید.</div>`
+                : ''
             }
+
+            <!-- Interactive Q&A Box: Ask AI anything about this word right inside the subtitle dictionary -->
+            <div dir="rtl" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.1);">
+              <div style="font-size:10.5px;font-weight:800;color:#c4b5fd;margin-bottom:5px;">
+                💬 هر سوالی درباره «${escapeHtml(info.word)}» در این زیرنویس دارید از هوش مصنوعی بپرسید:
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">
+                <button type="button" class="lt-ai-quick-q-chip" data-lt-quick-q="تفاوت معنایی این کلمه با مترادف‌هایش در این جمله چیست؟" style="background:rgba(139,92,246,0.18);border:1px solid rgba(167,139,250,0.35);color:#e9d5ff;border-radius:6px;padding:2px 7px;font-size:10px;cursor:pointer;">تفاوت با مترادف‌ها؟</button>
+                <button type="button" class="lt-ai-quick-q-chip" data-lt-quick-q="آیا این کلمه رسمی است یا عامیانه و در چه موقعیت‌هایی استفاده می‌شود؟" style="background:rgba(139,92,246,0.18);border:1px solid rgba(167,139,250,0.35);color:#e9d5ff;border-radius:6px;padding:2px 7px;font-size:10px;cursor:pointer;">رسمیه یا عامیانه؟</button>
+                <button type="button" class="lt-ai-quick-q-chip" data-lt-quick-q="۲ مثال کاربردی دیگر با این کلمه به همراه ترجمه فارسی بزن." style="background:rgba(139,92,246,0.18);border:1px solid rgba(167,139,250,0.35);color:#e9d5ff;border-radius:6px;padding:2px 7px;font-size:10px;cursor:pointer;">۲ مثال کاربردی دیگر</button>
+              </div>
+              <div style="display:flex;gap:5px;">
+                <input type="text" id="lt-ai-qa-input" dir="rtl" placeholder="سوال خود درباره این واژه یا گرامر جمله را بنویسید..." style="flex:1;background:#090d16;border:1px solid rgba(255,255,255,0.18);border-radius:7px;padding:6px 8px;color:#fff;font-size:11px;" />
+                <button type="button" id="lt-ai-qa-send-btn" ${state.dictAiQaLoading ? 'disabled' : ''} style="background:#8b5cf6;color:#fff;border:none;border-radius:7px;padding:5px 10px;font-size:11px;font-weight:800;cursor:pointer;">
+                  ${state.dictAiQaLoading ? '...' : 'پرسش ↵'}
+                </button>
+              </div>
+              ${
+                qaHistory.length > 0
+                  ? `<div style="margin-top:7px;display:flex;flex-direction:column;gap:6px;max-height:165px;overflow-y:auto;">
+                      ${qaHistory
+                        .map(
+                          (item) => `
+                        <div style="padding:6px 8px;border-radius:7px;font-size:11px;line-height:1.55;white-space:pre-line;${
+                          item.role === 'user'
+                            ? 'background:rgba(255,255,255,0.06);color:#fde047;font-weight:700;'
+                            : 'background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:#f8fafc;'
+                        }">
+                          ${item.role === 'user' ? `❓ ${escapeHtml(item.text)}` : escapeHtml(item.text)}
+                        </div>`
+                        )
+                        .join('')}
+                    </div>`
+                  : ''
+              }
+            </div>
           </div>
 
           <!-- 7. Examples: Current text -->
           ${
             currentTextHtml
-              ? `<div class="lt-dict-section-title">EXAMPLES: CURRENT TEXT</div>
+              ? `<div class="lt-dict-section-title">EXAMPLES: CURRENT VIDEO SUBTITLE</div>
                  ${currentTextHtml}`
               : ''
           }
 
-          <!-- 8. Examples: Tatoeba -->
+          <!-- 8. Examples: Usage & Tatoeba Sentences (ذخیره در پشت فلش‌کارت) -->
           ${
             tatoebaHtml
-              ? `<div class="lt-dict-section-title">EXAMPLES: TATOEBA</div>
+              ? `<div class="lt-dict-section-title">USAGE EXAMPLES IN CONTEXT (جملات نمونه پشت کارت):</div>
                  ${tatoebaHtml}`
               : ''
           }
@@ -1404,6 +1495,22 @@
       renderFloatingDictionaryContent(info);
     });
 
+    floatingDictEl.querySelector('#lt-toggle-gemini-key-btn')?.addEventListener('click', () => {
+      state.dictKeySetupOpen = !state.dictKeySetupOpen;
+      renderFloatingDictionaryContent(info);
+    });
+
+    floatingDictEl.querySelector('#lt-save-inline-gemini-key-btn')?.addEventListener('click', async () => {
+      const keyVal = floatingDictEl.querySelector('#lt-inline-gemini-key-input')?.value?.trim() || '';
+      state.settings.geminiApiKey = keyVal;
+      await sendExtMessage({
+        type: 'LT_SAVE_GEMINI_KEY',
+        geminiApiKey: keyVal
+      });
+      state.dictKeySetupOpen = false;
+      renderFloatingDictionaryContent(info);
+    });
+
     floatingDictEl.querySelector('#lt-save-custom-back-btn')?.addEventListener('click', async () => {
       const customFa = floatingDictEl.querySelector('#lt-custom-fa-input')?.value?.trim() || displayTranslation;
       const customNotes = floatingDictEl.querySelector('#lt-custom-notes-input')?.value?.trim() || '';
@@ -1412,7 +1519,12 @@
       await sendExtMessage({
         type: 'LT_UPDATE_CARD_BACK',
         id: info.word,
-        patch: { translation: customFa, customNotes }
+        patch: {
+          translation: customFa,
+          customNotes,
+          posGroups: posGroupsList,
+          tatoebaExamples: tatoebaList
+        }
       });
       state.dictEditBackOpen = false;
       renderFloatingDictionaryContent(info);
@@ -1431,22 +1543,71 @@
       state.dictAiLoading = false;
       if (aiResp && aiResp.ok && aiResp.data) {
         state.dictAiResult = aiResp.data;
-        info.aiExplanation = aiResp.data.explanationFa || info.aiExplanation;
+        info.aiExplanation = aiResp.data.grammarNuanceFa || aiResp.data.explanationFa || info.aiExplanation;
       }
       renderFloatingDictionaryContent(info);
+    });
+
+    const submitWordQaQuestion = async (rawQuestion) => {
+      const qText = String(rawQuestion || '').trim();
+      if (!qText || state.dictAiQaLoading) return;
+      if (!Array.isArray(state.dictAiQaHistory)) state.dictAiQaHistory = [];
+      state.dictAiQaHistory.push({ role: 'user', text: qText });
+      state.dictAiQaLoading = true;
+      renderFloatingDictionaryContent(info);
+
+      const activeSentence = info.contextSentence || (state.cues[state.activeCueIndex] ? state.cues[state.activeCueIndex].text : '');
+      const qaResp = await sendExtMessage({
+        type: 'LT_ASK_WORD_AI',
+        word: info.word,
+        contextSentence: activeSentence,
+        question: qText,
+        history: state.dictAiQaHistory.slice(0, -1)
+      });
+      state.dictAiQaLoading = false;
+      if (qaResp && qaResp.ok && qaResp.data && qaResp.data.answerFa) {
+        state.dictAiQaHistory.push({ role: 'model', text: qaResp.data.answerFa });
+      }
+      renderFloatingDictionaryContent(info);
+    };
+
+    floatingDictEl.querySelectorAll('[data-lt-quick-q]').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        submitWordQaQuestion(chip.getAttribute('data-lt-quick-q'));
+      });
+    });
+
+    floatingDictEl.querySelector('#lt-ai-qa-send-btn')?.addEventListener('click', () => {
+      const inputEl = floatingDictEl.querySelector('#lt-ai-qa-input');
+      if (inputEl && inputEl.value.trim()) {
+        submitWordQaQuestion(inputEl.value.trim());
+      }
+    });
+
+    floatingDictEl.querySelector('#lt-ai-qa-input')?.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const inputEl = e.currentTarget;
+        if (inputEl && inputEl.value.trim()) {
+          submitWordQaQuestion(inputEl.value.trim());
+        }
+      }
     });
 
     floatingDictEl.querySelector('#lt-save-ai-anki-btn')?.addEventListener('click', async () => {
       if (!state.dictAiResult) return;
       const aiMeaning = state.dictAiResult.contextualMeaningFa || displayTranslation;
-      const aiNote = state.dictAiResult.explanationFa || '';
+      const aiNote = [state.dictAiResult.grammarNuanceFa || state.dictAiResult.explanationFa || '', state.dictAiResult.mnemonicFa || ''].filter(Boolean).join(' — ');
       info.translation = aiMeaning;
       info.aiExplanation = aiNote;
       await saveWordWithStatus(
         Object.assign({}, info, {
           translation: aiMeaning,
           customNotes: aiNote,
-          aiExplanation: aiNote
+          aiExplanation: aiNote,
+          posGroups: posGroupsList,
+          tatoebaExamples: tatoebaList
         }),
         'learning'
       );
@@ -1456,7 +1617,9 @@
         patch: {
           translation: aiMeaning,
           customNotes: aiNote,
-          aiExplanation: aiNote
+          aiExplanation: aiNote,
+          posGroups: posGroupsList,
+          tatoebaExamples: tatoebaList
         }
       });
       renderFloatingDictionaryContent(info);
@@ -1494,7 +1657,15 @@
         const nextStatus = btn.getAttribute('data-lt-set-status');
         const customFa = floatingDictEl.querySelector('#lt-custom-fa-input')?.value?.trim() || info.translation;
         const customNotes = floatingDictEl.querySelector('#lt-custom-notes-input')?.value?.trim() || displayCustomNotes;
-        await saveWordWithStatus(Object.assign({}, info, { translation: customFa, customNotes }), nextStatus);
+        await saveWordWithStatus(
+          Object.assign({}, info, {
+            translation: customFa,
+            customNotes,
+            posGroups: posGroupsList,
+            tatoebaExamples: tatoebaList
+          }),
+          nextStatus
+        );
         renderFloatingDictionaryContent(info);
       });
     });
@@ -1509,7 +1680,9 @@
       lemma: info.lemma || cleanWord,
       type: cleanWord.includes(' ') ? 'phrase' : 'word',
       translation: info.translation || '',
+      customNotes: info.customNotes || '',
       pos: info.pos || (cleanWord.includes(' ') ? 'phrasal verb' : 'word'),
+      posGroups: Array.isArray(info.posGroups) ? info.posGroups : [],
       phonetic: info.phonetic || '',
       definitions: info.definitions || [],
       synonyms: info.synonyms || [],

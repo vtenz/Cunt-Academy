@@ -418,7 +418,8 @@ export interface AppAccountUser {
 
 export function generateExtensionSyncToken(
   user: User | AppAccountUser,
-  cardsSnapshot?: LeitnerCard[]
+  cardsSnapshot?: LeitnerCard[],
+  geminiApiKey?: string
 ): string {
   const compactCards = Array.isArray(cardsSnapshot)
     ? cardsSnapshot.slice(0, 150).map((c) => ({
@@ -433,6 +434,12 @@ export function generateExtensionSyncToken(
         ce: c.cefr || 'B1',
         iv: c.intervalDays || 0,
         nr: c.nextReviewAt || Date.now(),
+        pg: Array.isArray(c.posEntries)
+          ? c.posEntries.slice(0, 3).map((pe) => ({ pos: pe.pos, meanings: pe.terms }))
+          : undefined,
+        tx: Array.isArray(c.tatoebaExamples)
+          ? c.tatoebaExamples.slice(0, 2).map((ex) => ({ en: ex.en, fa: ex.fa }))
+          : undefined,
       }))
     : undefined;
 
@@ -446,6 +453,7 @@ export function generateExtensionSyncToken(
     dbId: firebaseConfig.firestoreDatabaseId,
     apiKey: firebaseConfig.apiKey,
     mode: (user as AppAccountUser).authMode || 'firebase-google',
+    gk: geminiApiKey || undefined,
     cards: compactCards,
   };
   return btoa(encodeURIComponent(JSON.stringify(payload)));
@@ -568,6 +576,35 @@ export function convertExtensionCardToWebCard(raw: Record<string, unknown>): Lei
           ? 'learning_now'
           : 'marked';
 
+  const rawPosGroups = (raw.posEntries || raw.posGroups || raw.pg) as
+    | Array<{ pos?: string; terms?: string[]; meanings?: string[] }>
+    | undefined;
+  const posEntries = Array.isArray(rawPosGroups)
+    ? rawPosGroups
+        .map((g) => ({
+          pos: String(g?.pos || 'word'),
+          terms: Array.isArray(g?.terms)
+            ? g.terms.map(String)
+            : Array.isArray(g?.meanings)
+              ? g.meanings.map(String)
+              : [],
+        }))
+        .filter((g) => g.terms.length > 0)
+    : [];
+
+  const rawTatoeba = (raw.tatoebaExamples || raw.tx) as
+    | Array<{ en?: string; fa?: string }>
+    | undefined;
+  const tatoebaExamples = Array.isArray(rawTatoeba)
+    ? rawTatoeba
+        .filter((ex) => ex && ex.en)
+        .map((ex) => ({
+          en: String(ex.en || ''),
+          fa: String(ex.fa || ''),
+          source: 'Tatoeba' as const,
+        }))
+    : [];
+
   return {
     id: sanitizeFirestoreId(
       String(raw.id || `word_${word.replace(/[^a-z0-9]/gi, '_')}`),
@@ -589,11 +626,11 @@ export function convertExtensionCardToWebCard(raw: Record<string, unknown>): Lei
     translationFa,
     miniMeaningsFa: Array.isArray(raw.miniMeaningsFa) ? (raw.miniMeaningsFa as string[]) : [],
     aiExplanationFa: String(raw.aiExplanationFa || raw.aiExplanation || ''),
-    posEntries: [],
+    posEntries,
     englishDefinition: String(raw.englishDefinition || ''),
     contextSentenceEn: String(raw.contextSentenceEn || raw.contextSentence || raw.c || ''),
     contextSentenceFa: String(raw.contextSentenceFa || raw.contextTranslation || raw.cf || ''),
-    tatoebaExamples: [],
+    tatoebaExamples,
     videoId: String(raw.videoId || 'youtube-video'),
     videoTitle: String(raw.videoTitle || 'YouTube Video'),
     videoTimestampSec: Number(raw.videoTimestampSec ?? raw.timestamp ?? 0),
@@ -610,6 +647,7 @@ export function convertExtensionCardToWebCard(raw: Record<string, unknown>): Lei
 export async function signInWithCloudSyncToken(rawToken: string): Promise<{
   user: AppAccountUser;
   cloudCards: LeitnerCard[];
+  geminiApiKey?: string;
 }> {
   const clean = String(rawToken || '').trim();
   if (!clean) {
@@ -630,6 +668,8 @@ export async function signInWithCloudSyncToken(rawToken: string): Promise<{
     projectId?: string;
     dbId?: string;
     apiKey?: string;
+    gk?: string;
+    geminiApiKey?: string;
     cards?: Array<Record<string, unknown>>;
   } | null = null;
   try {
@@ -749,7 +789,8 @@ export async function signInWithCloudSyncToken(rawToken: string): Promise<{
     // ignore
   }
 
-  return { user: sessionUser, cloudCards };
+  const syncedGeminiKey = String(parsed.gk || parsed.geminiApiKey || '').trim();
+  return { user: sessionUser, cloudCards, geminiApiKey: syncedGeminiKey || undefined };
 }
 
 
