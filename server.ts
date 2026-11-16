@@ -404,7 +404,200 @@ async function startServer() {
     });
   });
 
+  app.post('/api/youtube/load', async (req, res) => {
+    const { videoId, rawUrl, userApiKey } = req.body || {};
+    const cleanId = String(videoId || '')
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!cleanId) {
+      res.status(400).json({ ok: false, error: 'Invalid YouTube videoId' });
+      return;
+    }
+
+    let videoTitle = `YouTube Video (${cleanId})`;
+    let channelName = 'YouTube Creator';
+
+    // 1. Fetch real YouTube title & author via public oEmbed (noembed.com)
+    try {
+      const oembedRes = await fetch(
+        `https://noembed.com/embed?url=${encodeURIComponent(
+          `https://www.youtube.com/watch?v=${cleanId}`
+        )}`
+      );
+      if (oembedRes.ok) {
+        const oembedJson = (await oembedRes.json()) as {
+          title?: string;
+          author_name?: string;
+        };
+        if (oembedJson.title) videoTitle = oembedJson.title.trim();
+        if (oembedJson.author_name) channelName = oembedJson.author_name.trim();
+      }
+    } catch {
+      // fallback to cleanId title
+    }
+
+    // 2. Try to fetch real English captions from YouTube watch page captionTracks
+    const cues: Array<{
+      id: string;
+      tStartMs: number;
+      dDurationMs: number;
+      endMs: number;
+      textEn: string;
+      textFa: string;
+    }> = [];
+
+    try {
+      const watchRes = await fetch(`https://www.youtube.com/watch?v=${cleanId}&hl=en`, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+      });
+      if (watchRes.ok) {
+        const html = await watchRes.text();
+        const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
+        if (titleMatch && titleMatch[1] && videoTitle.startsWith('YouTube Video')) {
+          videoTitle = titleMatch[1].replace(/\s*-\s*YouTube$/i, '').trim() || videoTitle;
+        }
+        const captionMatch = html.match(/"captionTracks":(\[.*?\])/);
+        if (captionMatch && captionMatch[1]) {
+          const tracks = JSON.parse(captionMatch[1]) as Array<{
+            baseUrl?: string;
+            languageCode?: string;
+          }>;
+          const enTrack =
+            tracks.find((t) => t.languageCode === 'en') ||
+            tracks.find((t) => String(t.languageCode || '').startsWith('en')) ||
+            tracks[0];
+          if (enTrack && enTrack.baseUrl) {
+            const json3Url = enTrack.baseUrl.includes('fmt=')
+              ? enTrack.baseUrl.replace(/fmt=[^&]+/, 'fmt=json3')
+              : `${enTrack.baseUrl}&fmt=json3`;
+            const capRes = await fetch(json3Url);
+            if (capRes.ok) {
+              const capJson = (await capRes.json()) as {
+                events?: Array<{
+                  tStartMs?: number;
+                  dDurationMs?: number;
+                  segs?: Array<{ utf8?: string }>;
+                }>;
+              };
+              const rawEvents = (capJson.events || [])
+                .filter((ev) => Array.isArray(ev.segs) && ev.segs.length > 0)
+                .slice(0, 18);
+              for (let i = 0; i < rawEvents.length; i++) {
+                const ev = rawEvents[i];
+                const textEn = (ev.segs || [])
+                  .map((s) => s.utf8 || '')
+                  .join(' ')
+                  .replace(/\s+/g, ' ')
+                  .trim();
+                if (!textEn || textEn.length < 4 || /^\[.*\]$/.test(textEn)) continue;
+                const tStartMs = Math.max(0, Math.round(ev.tStartMs || i * 5000));
+                const dDurationMs = Math.max(2500, Math.min(7000, Math.round(ev.dDurationMs || 4500)));
+                let textFa = '';
+                try {
+                  const gtxRes = await fetch(
+                    `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=fa&dt=t&dj=1&q=${encodeURIComponent(
+                      textEn
+                    )}`
+                  );
+                  if (gtxRes.ok) {
+                    const gtxData = (await gtxRes.json()) as {
+                      sentences?: Array<{ trans?: string }>;
+                    };
+                    textFa = (gtxData.sentences || [])
+                      .map((s) => s.trans || '')
+                      .join('')
+                      .trim();
+                  }
+                } catch {
+                  // ignore
+                }
+                cues.push({
+                  id: `yt-${cleanId}-${cues.length + 1}`,
+                  tStartMs,
+                  dDurationMs,
+                  endMs: tStartMs + dDurationMs,
+                  textEn,
+                  textFa: textFa || 'روی هر کلمه کلیک کنید تا معنی دقیق فارسی نمایش داده شود.',
+                });
+                if (cues.length >= 10) break;
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // fallback below
+    }
+
+    // 3. If YouTube blocked server-side caption scraping, generate rich topic-aligned dual subtitles via Gemini if available
+    if (cues.length === 0) {
+      const effectiveKey = String(userApiKey || process.env.GEMINI_API_KEY || '').trim();
+      const ai = effectiveKey
+        ? new GoogleGenAI({
+            apiKey: effectiveKey,
+            httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
+          })
+        : null;
+      if (ai) {
+        try {
+          const genRes = await ai.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: `Create 6 natural, educational English video subtitle sentences with accurate Persian translations about the YouTube video titled "${videoTitle}" by "${channelName}" (${rawUrl || cleanId}). Include useful B1-C1 English vocabulary and phrasal verbs.`,
+            config: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    textEn: { type: Type.STRING },
+                    textFa: { type: Type.STRING },
+                  },
+                  required: ['textEn', 'textFa'],
+                },
+              },
+            },
+          });
+          const parsedLines = JSON.parse(genRes.text || '[]') as Array<{
+            textEn?: string;
+            textFa?: string;
+          }>;
+          let cursorMs = 5000;
+          for (let i = 0; i < parsedLines.length; i++) {
+            const item = parsedLines[i];
+            if (!item?.textEn) continue;
+            const dur = 5000;
+            cues.push({
+              id: `ai-${cleanId}-${i + 1}`,
+              tStartMs: cursorMs,
+              dDurationMs: dur,
+              endMs: cursorMs + dur,
+              textEn: item.textEn,
+              textFa: item.textFa || '',
+            });
+            cursorMs += dur;
+          }
+        } catch {
+          // client will use generateTopicContextualSubtitles fallback
+        }
+      }
+    }
+
+    res.status(200).json({
+      ok: true,
+      videoId: cleanId,
+      videoTitle,
+      channelName,
+      cues,
+    });
+  });
+
   if (process.env.NODE_ENV !== 'production') {
+    process.env.DISABLE_HMR = 'true';
     const vite = await createViteServer({
       server: { middlewareMode: true, hmr: false, watch: null },
       appType: 'spa',

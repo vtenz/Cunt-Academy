@@ -1999,8 +1999,8 @@ export const INITIAL_SEED_CARDS: LeitnerCard[] = [
     tatoebaExamples: BUILTIN_DICTIONARY.resilient.tatoebaExamples,
     contextSentenceEn: 'When you come up with a detailed prompt, this resilient generator creates authentic art.',
     contextSentenceFa: 'وقتی یک پرامپت دقیق ابداع می‌کنید، این مولد مقاوم هنر اصیل خلق می‌کند.',
-    videoId: DEMO_VIDEO_METADATA.videoId,
-    videoTitle: DEMO_VIDEO_METADATA.videoTitle,
+    videoId: 'M7lc1UVf-VE',
+    videoTitle: 'Central Park 3D Grid & Deep Knowledge Work Lab',
     videoTimestampSec: 41.0,
     box: 4,
     nextReviewAt: INITIAL_NOW + 4 * DAY_MS,
@@ -2032,8 +2032,8 @@ export const INITIAL_SEED_CARDS: LeitnerCard[] = [
     tatoebaExamples: BUILTIN_DICTIONARY.ephemeral.tatoebaExamples,
     contextSentenceEn: 'Spaced repetition transforms ephemeral short-term memories into effortless fluency.',
     contextSentenceFa: 'تکرار با فاصله، خاطرات زودگذر کوتاه‌مدت را به روانی بی‌دردسر در گفتار تبدیل می‌کند.',
-    videoId: DEMO_VIDEO_METADATA.videoId,
-    videoTitle: DEMO_VIDEO_METADATA.videoTitle,
+    videoId: 'M7lc1UVf-VE',
+    videoTitle: 'Central Park 3D Grid & Deep Knowledge Work Lab',
     videoTimestampSec: 46.5,
     box: 5,
     nextReviewAt: INITIAL_NOW + 9 * DAY_MS,
@@ -2308,5 +2308,427 @@ export function gradeDuoWordBankAnswer(selectedTokens: string[], targetTokens: s
     .toLowerCase();
   return Boolean(cleanTarget) && cleanSelected === cleanTarget;
 }
+
+// ============================================================================
+// YOUTUBE STUDIO URL LOADER, CUSTOM SUBTITLE PARSER & VIDEO VOCABULARY GROUPING
+// ============================================================================
+
+export interface StudioVideoPreset {
+  videoId: string;
+  youtubeId: string;
+  videoTitle: string;
+  channelName: string;
+  durationSec: number;
+  categoryFa: string;
+  cues: SubtitleCue[];
+}
+
+export const CURATED_YOUTUBE_STUDIO_VIDEOS: StudioVideoPreset[] = [
+  {
+    videoId: DEMO_VIDEO_METADATA.videoId,
+    youtubeId: 'aircAruvnKk',
+    videoTitle: DEMO_VIDEO_METADATA.videoTitle,
+    channelName: 'Cunt Academy Lab',
+    durationSec: 52,
+    categoryFa: 'هوش مصنوعی و یادگیری زبان',
+    cues: DEMO_DUAL_SUBTITLES,
+  },
+  {
+    videoId: 'M7lc1UVf-VE',
+    youtubeId: 'M7lc1UVf-VE',
+    videoTitle: 'Central Park 3D Grid & Deep Knowledge Work Lab',
+    channelName: 'Urban History & Architecture',
+    durationSec: 65,
+    categoryFa: 'معماری، تاریخ و پژوهش',
+    cues: [
+      {
+        id: 'cp-cue-1',
+        tStartMs: 12000,
+        dDurationMs: 5200,
+        endMs: 17200,
+        textEn: 'So column A in retrospect is even more impressive given how relatively accurate it is.',
+        textFa: 'بنابراین ستون الف در نگاه به گذشته، با توجه به اینکه چقدر به نسبت دقیق است، حتی چشمگیرتر است.',
+        words: buildWordTimingsForLine(
+          'So column A in retrospect is even more impressive given how relatively accurate it is.',
+          12000,
+          5200
+        ),
+      },
+      {
+        id: 'cp-cue-2',
+        tStartMs: 17200,
+        dDurationMs: 5400,
+        endMs: 22600,
+        textEn: 'This becomes a tangential knowledge work test in researching and taking in information.',
+        textFa: 'این تبدیل به یک آزمون کار دانشی فرعی در زمینه پژوهش کردن و جذب و درک اطلاعات می‌شود.',
+        words: buildWordTimingsForLine(
+          'This becomes a tangential knowledge work test in researching and taking in information.',
+          17200,
+          5400
+        ),
+      },
+      {
+        id: 'cp-cue-3',
+        tStartMs: 22600,
+        dDurationMs: 5200,
+        endMs: 27800,
+        textEn: 'When you figure out how the grid works, every architectural detail turns out meaningful.',
+        textFa: 'وقتی سر درمی‌آورید که شبکه شهری چطور کار می‌کند، هر جزئیات معماری معنادار از آب درمی‌آید.',
+        words: buildWordTimingsForLine(
+          'When you figure out how the grid works, every architectural detail turns out meaningful.',
+          22600,
+          5200
+        ),
+      },
+      {
+        id: 'cp-cue-4',
+        tStartMs: 27800,
+        dDurationMs: 5500,
+        endMs: 33300,
+        textEn: 'Spaced repetition transforms ephemeral short-term memories into effortless fluency.',
+        textFa: 'تکرار با فاصله، خاطرات زودگذر کوتاه‌مدت را به روانی بی‌دردسر در گفتار تبدیل می‌کند.',
+        words: buildWordTimingsForLine(
+          'Spaced repetition transforms ephemeral short-term memories into effortless fluency.',
+          27800,
+          5500
+        ),
+      },
+    ],
+  },
+  {
+    videoId: 'aqz-KE-bpKQ',
+    youtubeId: 'aqz-KE-bpKQ',
+    videoTitle: 'New Metroidvania by Ex Team Cherry Member — Indie Game Analysis',
+    channelName: 'Primacon Gaming Studio',
+    durationSec: 48,
+    categoryFa: 'گیمینگ و طراحی بازی',
+    cues: [
+      {
+        id: 'mv-cue-1',
+        tStartMs: 8000,
+        dDurationMs: 4800,
+        endMs: 12800,
+        textEn: 'This new indie adventure changes the entire gaming cycle for Primacon and modern players.',
+        textFa: 'این ماجراجویی مستقل جدید، کل چرخه بازی را برای Primacon و بازیکنان مدرن تغییر می‌دهد.',
+        words: buildWordTimingsForLine(
+          'This new indie adventure changes the entire gaming cycle for Primacon and modern players.',
+          8000,
+          4800
+        ),
+      },
+      {
+        id: 'mv-cue-2',
+        tStartMs: 12800,
+        dDurationMs: 5200,
+        endMs: 18000,
+        textEn: 'Developers came up with an impressive world where players deal with fast obstacles.',
+        textFa: 'توسعه‌دهندگان دنیای چشمگیری ابداع کردند که در آن بازیکنان با موانع سریع سروکار دارند.',
+        words: buildWordTimingsForLine(
+          'Developers came up with an impressive world where players deal with fast obstacles.',
+          12800,
+          5200
+        ),
+      },
+      {
+        id: 'mv-cue-3',
+        tStartMs: 18000,
+        dDurationMs: 5000,
+        endMs: 23000,
+        textEn: 'Even if a boss fight seems hard at first, never give up before you find out the pattern.',
+        textFa: 'حتی اگر نبرد با غول مرحله در ابتدا سخت به نظر برسد، هرگز قبل از کشف کردن الگو تسلیم نشوید.',
+        words: buildWordTimingsForLine(
+          'Even if a boss fight seems hard at first, never give up before you find out the pattern.',
+          18000,
+          5000
+        ),
+      },
+    ],
+  },
+];
+
+export function extractYouTubeVideoId(rawInput: string): string | null {
+  const clean = String(rawInput || '').trim();
+  if (!clean) return null;
+
+  // Match preset IDs directly
+  if (CURATED_YOUTUBE_STUDIO_VIDEOS.some((v) => v.videoId === clean)) {
+    return clean;
+  }
+
+  // Direct 11-character YouTube ID
+  if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) {
+    return clean;
+  }
+
+  try {
+    const withProto = /^https?:\/\//i.test(clean) ? clean : `https://${clean}`;
+    const url = new URL(withProto);
+    const host = url.hostname.toLowerCase();
+
+    if (host.includes('youtu.be')) {
+      const id = url.pathname.replace(/^\/+/, '').split('/')[0];
+      if (/^[a-zA-Z0-9_-]{11}$/.test(id)) return id;
+    }
+
+    if (host.includes('youtube.com') || host.includes('youtube-nocookie.com')) {
+      const vParam = url.searchParams.get('v');
+      if (vParam && /^[a-zA-Z0-9_-]{11}$/.test(vParam)) return vParam;
+
+      const pathMatch = url.pathname.match(/\/(?:embed|shorts|live|v)\/([a-zA-Z0-9_-]{11})/);
+      if (pathMatch && pathMatch[1]) return pathMatch[1];
+    }
+  } catch {
+    // Fallback regex scan below
+  }
+
+  const regexMatch = clean.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+  return regexMatch ? regexMatch[1] : null;
+}
+
+function parseTimestampToMs(rawTs: string): number | null {
+  const clean = rawTs.trim().replace(',', '.');
+  const parts = clean.split(':').map((p) => Number(p));
+  if (parts.some((n) => Number.isNaN(n))) return null;
+  if (parts.length === 3) {
+    return Math.round((parts[0] * 3600 + parts[1] * 60 + parts[2]) * 1000);
+  }
+  if (parts.length === 2) {
+    return Math.round((parts[0] * 60 + parts[1]) * 1000);
+  }
+  return null;
+}
+
+export function parseCustomSubtitlesOrTranscript(rawText: string): SubtitleCue[] {
+  const text = String(rawText || '').replace(/\r\n/g, '\n').trim();
+  if (!text) return [];
+
+  const blocks = text
+    .replace(/^WEBVTT[^\n]*\n+/i, '')
+    .split(/\n\s*\n/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  const cues: SubtitleCue[] = [];
+
+  // Check if input looks like SRT / VTT blocks with `-->`
+  if (text.includes('-->')) {
+    for (let i = 0; i < blocks.length; i++) {
+      const lines = blocks[i].split('\n').map((l) => l.trim()).filter(Boolean);
+      const arrowIdx = lines.findIndex((l) => l.includes('-->'));
+      if (arrowIdx === -1) continue;
+      const [startStr, endStr] = lines[arrowIdx].split('-->').map((s) => s.trim().split(' ')[0]);
+      const startMs = parseTimestampToMs(startStr) ?? i * 5000;
+      const endMs = parseTimestampToMs(endStr) ?? startMs + 4500;
+      const durMs = Math.max(1200, endMs - startMs);
+      const contentLines = lines.slice(arrowIdx + 1);
+      if (contentLines.length === 0) continue;
+
+      let textEn = contentLines[0];
+      let textFa = contentLines.length > 1 ? contentLines.slice(1).join(' ') : '';
+      if (textEn.includes('||')) {
+        const [enPart, faPart] = textEn.split('||').map((s) => s.trim());
+        textEn = enPart;
+        textFa = faPart || textFa;
+      }
+
+      cues.push({
+        id: `custom-cue-${i + 1}`,
+        tStartMs: startMs,
+        dDurationMs: durMs,
+        endMs: startMs + durMs,
+        textEn,
+        textFa: textFa || 'برای مشاهده معنی دقیق هر واژه روی آن کلیک کنید.',
+        words: buildWordTimingsForLine(textEn, startMs, durMs),
+      });
+    }
+    if (cues.length > 0) return cues;
+  }
+
+  // Plain lines or `00:12 English || Persian` format
+  const rawLines = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  let cursorMs = 5000;
+  for (let i = 0; i < rawLines.length; i++) {
+    let line = rawLines[i];
+    let startMs = cursorMs;
+    const tsMatch = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?)\s+(.+)$/);
+    if (tsMatch) {
+      const parsedTs = parseTimestampToMs(tsMatch[1]);
+      if (parsedTs !== null) startMs = parsedTs;
+      line = tsMatch[2].trim();
+    }
+
+    let textEn = line;
+    let textFa = '';
+    if (line.includes('||')) {
+      const [enPart, faPart] = line.split('||').map((s) => s.trim());
+      textEn = enPart;
+      textFa = faPart || '';
+    }
+
+    const durMs = Math.max(3500, Math.min(7500, textEn.split(/\s+/).length * 480));
+    cues.push({
+      id: `custom-line-${i + 1}`,
+      tStartMs: startMs,
+      dDurationMs: durMs,
+      endMs: startMs + durMs,
+      textEn,
+      textFa: textFa || 'روی هر کلمه کلیک یا هاور کنید تا معنی دقیق فارسی و تحلیل هوشمند نمایش داده شود.',
+      words: buildWordTimingsForLine(textEn, startMs, durMs),
+    });
+    cursorMs = startMs + durMs;
+  }
+
+  return cues;
+}
+
+export function generateTopicContextualSubtitles(videoTitle: string): SubtitleCue[] {
+  const cleanTitle = String(videoTitle || 'YouTube Video').trim();
+  const rawCues = [
+    {
+      tStartMs: 6000,
+      dDurationMs: 5000,
+      textEn: `Welcome back! Today we are exploring "${cleanTitle}" in detail.`,
+      textFa: `خوش آمدید! امروز قصد داریم «${cleanTitle}» را با جزئیات کامل بررسی کنیم.`,
+    },
+    {
+      tStartMs: 11000,
+      dDurationMs: 5200,
+      textEn: 'So in retrospect, the core idea is even more impressive given how relatively accurate it is.',
+      textFa: 'بنابراین در نگاه به گذشته، ایده اصلی با توجه به اینکه چقدر به نسبت دقیق است، حتی چشمگیرتر است.',
+    },
+    {
+      tStartMs: 16200,
+      dDurationMs: 5400,
+      textEn: 'We are going through a major transformation right now in researching and taking in information.',
+      textFa: 'ما همین الان در حال پشت سر گذاشتن یک تحول بزرگ در زمینه پژوهش کردن و جذب اطلاعات هستیم.',
+    },
+    {
+      tStartMs: 21600,
+      dDurationMs: 5200,
+      textEn: 'When you come up with a practical method, spaced repetition turns ephemeral notes into fluency.',
+      textFa: 'وقتی یک روش کاربردی ابداع می‌کنید، تکرار با فاصله یادداشت‌های زودگذر را به تسلط روان تبدیل می‌کند.',
+    },
+    {
+      tStartMs: 26800,
+      dDurationMs: 5000,
+      textEn: 'Click any word or phrasal verb in this subtitle to save it directly under this video.',
+      textFa: 'روی هر کلمه یا فعل عبارتی در این زیرنویس کلیک کنید تا مستقیماً با نام همین ویدیو ذخیره شود.',
+    },
+  ];
+
+  return rawCues.map((c, idx) => ({
+    id: `gen-cue-${idx + 1}`,
+    tStartMs: c.tStartMs,
+    dDurationMs: c.dDurationMs,
+    endMs: c.tStartMs + c.dDurationMs,
+    textEn: c.textEn,
+    textFa: c.textFa,
+    words: buildWordTimingsForLine(c.textEn, c.tStartMs, c.dDurationMs),
+  }));
+}
+
+export interface VideoVocabularyGroup {
+  videoId: string;
+  videoTitle: string;
+  isRealYouTubeId: boolean;
+  youtubeWatchUrl: string;
+  thumbnailUrl: string;
+  cards: LeitnerCard[];
+  sentences: SavedSentence[];
+  totalWords: number;
+  learningCount: number;
+  knownCount: number;
+  phrasesCount: number;
+  lastSavedAt: number;
+}
+
+export function groupCardsByVideo(
+  cards: LeitnerCard[],
+  savedSentences: SavedSentence[] = []
+): VideoVocabularyGroup[] {
+  const groupsMap = new Map<string, VideoVocabularyGroup>();
+
+  const resolveThumbAndUrl = (vid: string): { isReal: boolean; watchUrl: string; thumb: string } => {
+    const preset = CURATED_YOUTUBE_STUDIO_VIDEOS.find((p) => p.videoId === vid || p.youtubeId === vid);
+    const effectiveYtId = preset ? preset.youtubeId : /^[a-zA-Z0-9_-]{11}$/.test(vid) ? vid : '';
+    const isReal = Boolean(effectiveYtId);
+    return {
+      isReal,
+      watchUrl: isReal
+        ? `https://www.youtube.com/watch?v=${effectiveYtId}`
+        : 'https://www.youtube.com',
+      thumb: isReal ? `https://i.ytimg.com/vi/${effectiveYtId}/hqdefault.jpg` : '',
+    };
+  };
+
+  for (const card of cards || []) {
+    if (!card || !card.word) continue;
+    const rawVid = String(card.videoId || '').trim() || 'general-vocabulary';
+    const rawTitle = String(card.videoTitle || '').trim() || 'ویدیوهای یوتیوب (عمومی)';
+    const key = rawVid.toLowerCase();
+
+    let group = groupsMap.get(key);
+    if (!group) {
+      const { isReal, watchUrl, thumb } = resolveThumbAndUrl(rawVid);
+      group = {
+        videoId: rawVid,
+        videoTitle: rawTitle,
+        isRealYouTubeId: isReal,
+        youtubeWatchUrl: watchUrl,
+        thumbnailUrl: thumb,
+        cards: [],
+        sentences: [],
+        totalWords: 0,
+        learningCount: 0,
+        knownCount: 0,
+        phrasesCount: 0,
+        lastSavedAt: 0,
+      };
+      groupsMap.set(key, group);
+    } else if (
+      (group.videoTitle === 'YouTube Video' || group.videoTitle === 'ویدیوهای یوتیوب (عمومی)') &&
+      rawTitle !== 'YouTube Video'
+    ) {
+      group.videoTitle = rawTitle;
+    }
+
+    group.cards.push(card);
+    group.totalWords += 1;
+    if (card.status === 'known' || card.box >= 6) {
+      group.knownCount += 1;
+    } else if (card.status !== 'ignored') {
+      group.learningCount += 1;
+    }
+    if (card.isPhrase || /\s+/.test(card.word)) {
+      group.phrasesCount += 1;
+    }
+    const ts = Math.max(card.lastReviewedAt || 0, card.createdAt || 0);
+    if (ts > group.lastSavedAt) {
+      group.lastSavedAt = ts;
+    }
+  }
+
+  for (const sent of savedSentences || []) {
+    if (!sent || !sent.sentenceEn) continue;
+    const rawVid = String(sent.videoId || '').trim() || 'general-vocabulary';
+    const key = rawVid.toLowerCase();
+    const group = groupsMap.get(key);
+    if (group) {
+      group.sentences.push(sent);
+    }
+  }
+
+  const list = Array.from(groupsMap.values());
+  for (const g of list) {
+    g.cards.sort((a, b) => (a.videoTimestampSec || 0) - (b.videoTimestampSec || 0));
+  }
+
+  return list.sort((a, b) => b.totalWords - a.totalWords || b.lastSavedAt - a.lastSavedAt);
+}
+
 
 

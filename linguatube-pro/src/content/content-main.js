@@ -1671,9 +1671,38 @@
     });
   }
 
+  function resolveCurrentYouTubeVideoId() {
+    try {
+      const fromParam = new URLSearchParams(window.location.search).get('v');
+      if (fromParam) return fromParam;
+      const shortsMatch = window.location.pathname.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
+      if (shortsMatch) return shortsMatch[1];
+    } catch (_e) {
+      // ignore
+    }
+    return state.videoId || 'youtube-video';
+  }
+
+  function resolveCurrentYouTubeVideoTitle() {
+    const domTitle =
+      document.querySelector('#title h1 yt-formatted-string')?.textContent ||
+      document.querySelector('h1.ytd-watch-metadata yt-formatted-string')?.textContent ||
+      state.videoTitle ||
+      document.title ||
+      'YouTube Video';
+    return String(domTitle)
+      .replace(/^\(\d+\)\s*/, '')
+      .replace(/\s*-\s*YouTube$/i, '')
+      .trim() || 'YouTube Video';
+  }
+
   async function saveWordWithStatus(info, status) {
     const activeCue = state.cues[state.activeCueIndex];
     const cleanWord = String(info.word || '').trim().toLowerCase();
+    const resolvedVideoId = resolveCurrentYouTubeVideoId();
+    const resolvedVideoTitle = resolveCurrentYouTubeVideoTitle();
+    state.videoId = resolvedVideoId;
+    state.videoTitle = resolvedVideoTitle;
     const cardPayload = {
       id: cleanWord,
       word: cleanWord,
@@ -1691,9 +1720,9 @@
       contextSentence: info.contextSentence || (activeCue ? activeCue.text : ''),
       contextTranslation: info.contextTranslation || (activeCue ? activeCue.translation : ''),
       aiExplanation: info.aiExplanation || '',
-      videoId: state.videoId,
-      videoTitle: state.videoTitle || document.title.replace(/ - YouTube$/, ''),
-      timestamp: activeCue ? Math.floor(activeCue.startMs / 1000) : 0,
+      videoId: resolvedVideoId,
+      videoTitle: resolvedVideoTitle,
+      timestamp: activeCue ? Math.floor(activeCue.startMs / 1000) : (videoEl ? Math.floor(videoEl.currentTime || 0) : 0),
       cefr: info.cefr || 'B1',
       freqTag: info.freqTag || 'tag 2k',
       rank: info.rank || 1800,
@@ -1718,13 +1747,15 @@
     if (!activeCue.translation) {
       await ensureCueTranslated(state.activeCueIndex);
     }
+    const resolvedVideoId = resolveCurrentYouTubeVideoId();
+    const resolvedVideoTitle = resolveCurrentYouTubeVideoTitle();
     const res = await sendExtMessage({
       type: 'LT_SAVE_SENTENCE',
       sentence: {
         text: activeCue.text,
         translation: activeCue.translation || '',
-        videoId: state.videoId,
-        videoTitle: state.videoTitle || document.title.replace(/ - YouTube$/, ''),
+        videoId: resolvedVideoId,
+        videoTitle: resolvedVideoTitle,
         timestamp: Math.floor(activeCue.startMs / 1000)
       }
     });

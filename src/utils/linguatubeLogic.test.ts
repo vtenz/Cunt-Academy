@@ -20,6 +20,9 @@ import {
   detectCollocationAtWord,
   buildDuoPracticeLesson,
   gradeDuoWordBankAnswer,
+  extractYouTubeVideoId,
+  parseCustomSubtitlesOrTranscript,
+  groupCardsByVideo,
   DEFAULT_LR_SETTINGS,
   INITIAL_SEED_CARDS,
   DEMO_DUAL_SUBTITLES,
@@ -197,5 +200,28 @@ test('buildDuoPracticeLesson generates Match Pairs, Multiple Choice, and Word Ba
   assert.equal(gradeDuoWordBankAnswer(wbQuestion.targetTokens, wbQuestion.targetTokens), true);
   assert.equal(gradeDuoWordBankAnswer(['wrong'], wbQuestion.targetTokens), false);
 });
+
+test('extractYouTubeVideoId, parseCustomSubtitlesOrTranscript, and groupCardsByVideo work accurately', () => {
+  assert.equal(extractYouTubeVideoId('https://www.youtube.com/watch?v=M7lc1UVf-VE&t=12s'), 'M7lc1UVf-VE');
+  assert.equal(extractYouTubeVideoId('https://youtu.be/aircAruvnKk?si=abc'), 'aircAruvnKk');
+  assert.equal(extractYouTubeVideoId('https://www.youtube.com/shorts/aqz-KE-bpKQ'), 'aqz-KE-bpKQ');
+  assert.equal(extractYouTubeVideoId('M7lc1UVf-VE'), 'M7lc1UVf-VE');
+
+  const parsedSrt = parseCustomSubtitlesOrTranscript(
+    `1\n00:00:05,000 --> 00:00:09,500\nSo column A in retrospect is even more impressive.\nبنابراین ستون الف در نگاه به گذشته حتی چشمگیرتر است.`
+  );
+  assert.equal(parsedSrt.length, 1);
+  assert.equal(parsedSrt[0].tStartMs, 5000);
+  assert.ok(parsedSrt[0].textEn.includes('retrospect'));
+  assert.ok(parsedSrt[0].textFa.includes('نگاه به گذشته'));
+
+  const videoGroups = groupCardsByVideo(INITIAL_SEED_CARDS);
+  assert.equal(videoGroups.length, 2);
+  assert.equal(videoGroups[0].videoId, 'ai-image-gen-2026');
+  assert.equal(videoGroups[0].totalWords, 5);
+  assert.equal(videoGroups[1].videoId, 'M7lc1UVf-VE');
+  assert.equal(videoGroups[1].totalWords, 2);
+});
+
 
 

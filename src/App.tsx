@@ -16,6 +16,7 @@ import {
   updateCardBackContent,
   computePhrasePumpPipelineCounts,
   computeAnkiDeckCounts,
+  groupCardsByVideo,
   DAY_MS,
 } from './utils/linguatubeLogic';
 import { PlayerSimulatorView } from './components/PlayerSimulatorView';
@@ -24,6 +25,7 @@ import { ExtensionPackageView } from './components/ExtensionPackageView';
 import { CloudAccountModal } from './components/CloudAccountModal';
 import { BrandLogo } from './components/BrandLogo';
 import { DuoPracticeView } from './components/DuoPracticeView';
+import { VideoVocabularyView } from './components/VideoVocabularyView';
 import {
   auth,
   User,
@@ -59,6 +61,7 @@ const SETTINGS_STORAGE_KEY = 'cunt_academy_settings_v5';
 
 export type MainNavSection =
   | 'media'
+  | 'videos'
   | 'duopractice'
   | 'phrasepump'
   | 'saved'
@@ -68,6 +71,12 @@ export type MainNavSection =
 
 export default function App() {
   const [activeNav, setActiveNav] = useState<MainNavSection>('media');
+  const [selectedStudioVideo, setSelectedStudioVideo] = useState<{
+    videoId: string;
+    videoTitle?: string;
+    timestampSec?: number;
+  } | null>(null);
+  const [initialVideoFilterId, setInitialVideoFilterId] = useState<string | null>(null);
   const [duoTheme, setDuoTheme] = useState<'light' | 'dark'>(() => {
     try {
       const savedTheme = localStorage.getItem('cunt_academy_duo_theme');
@@ -761,6 +770,7 @@ export default function App() {
 
   const pipelineCounts = computePhrasePumpPipelineCounts(cards);
   const ankiCounts = computeAnkiDeckCounts(cards);
+  const videoGroupsCount = groupCardsByVideo(cards, savedSentences).length;
 
   const portalSubView: PortalSubView =
     activeNav === 'saved'
@@ -892,6 +902,26 @@ export default function App() {
                   📚
                 </span>
                 <span>بانک لغات ({cards.length})</span>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              data-testid="nav-videos"
+              onClick={() => setActiveNav('videos')}
+              className={`duo-nav-item ${activeNav === 'videos' ? 'is-active' : ''}`}
+            >
+              <span className="flex items-center gap-3">
+                <span className="w-7 h-7 rounded-xl bg-[#1CB0F6] border-b-2 border-[#1899D6] text-white flex items-center justify-center text-xs">
+                  🎬
+                </span>
+                <span>لغات به تفکیک ویدیو</span>
+              </span>
+              <span
+                data-testid="sidebar-videos-count-badge"
+                className="px-2 py-0.5 rounded-xl bg-[#1CB0F6] border-b-2 border-[#1899D6] text-white font-mono text-[10px] font-black"
+              >
+                {videoGroupsCount}
               </span>
             </button>
 
@@ -1349,6 +1379,29 @@ export default function App() {
               onSaveSentence={handleSaveSentence}
               onOpenPhrasePump={() => setActiveNav('phrasepump')}
               onOpenSettingsPage={() => setActiveNav('settings')}
+              selectedStudioVideo={selectedStudioVideo}
+              onOpenVideoVocabulary={(vidId) => {
+                setInitialVideoFilterId(vidId);
+                setActiveNav('videos');
+              }}
+            />
+          )}
+
+          {activeNav === 'videos' && (
+            <VideoVocabularyView
+              cards={cards}
+              savedSentences={savedSentences}
+              selectedVideoId={initialVideoFilterId}
+              onSelectVideoId={(vidId) => setInitialVideoFilterId(vidId)}
+              onOpenVideoInStudio={(videoId, videoTitle, timestampSec) => {
+                setSelectedStudioVideo({ videoId, videoTitle, timestampSec });
+                setActiveNav('media');
+              }}
+              onStartDuoPractice={() => setActiveNav('duopractice')}
+              onGradeCard={handleGradeCard}
+              onUpdateCardStatus={handleUpdateCardStatus}
+              onUpdateCardBack={handleUpdateCardBack}
+              onDeleteCard={handleDeleteCard}
             />
           )}
 

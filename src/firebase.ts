@@ -434,6 +434,9 @@ export function generateExtensionSyncToken(
         ce: c.cefr || 'B1',
         iv: c.intervalDays || 0,
         nr: c.nextReviewAt || Date.now(),
+        vid: c.videoId || '',
+        vt: c.videoTitle || '',
+        vts: c.videoTimestampSec || 0,
         pg: Array.isArray(c.posEntries)
           ? c.posEntries.slice(0, 3).map((pe) => ({ pos: pe.pos, meanings: pe.terms }))
           : undefined,
@@ -592,7 +595,7 @@ export function convertExtensionCardToWebCard(raw: Record<string, unknown>): Lei
         .filter((g) => g.terms.length > 0)
     : [];
 
-  const rawTatoeba = (raw.tatoebaExamples || raw.tx) as
+  const rawTatoeba = (raw.tatoebaExamples || raw.tx || raw.te) as
     | Array<{ en?: string; fa?: string }>
     | undefined;
   const tatoebaExamples = Array.isArray(rawTatoeba)
@@ -611,7 +614,7 @@ export function convertExtensionCardToWebCard(raw: Record<string, unknown>): Lei
       'word'
     ),
     word,
-    lemma: String(raw.lemma || word),
+    lemma: String(raw.lemma || raw.l || word),
     isPhrase: Boolean(raw.isPhrase ?? /\s+/.test(word)),
     status,
     pumpStage,
@@ -619,7 +622,7 @@ export function convertExtensionCardToWebCard(raw: Record<string, unknown>): Lei
     intervalDays: Number(raw.intervalDays ?? raw.iv ?? 0),
     learningStep: Number(raw.learningStep ?? 0),
     customNotesFa: String(raw.customNotesFa || raw.customNotes || raw.n || ''),
-    cefr: (String(raw.cefr || raw.ce || 'B1') as LeitnerCard['cefr']) || 'B1',
+    cefr: (String(raw.cefr || raw.ce || raw.c || 'B1') as LeitnerCard['cefr']) || 'B1',
     freqTag: String(raw.freqTag || 'tag 2k'),
     rank: Number(raw.rank || 2200),
     phonetic: String(raw.phonetic || raw.p || `/${word}/`),
@@ -628,12 +631,12 @@ export function convertExtensionCardToWebCard(raw: Record<string, unknown>): Lei
     aiExplanationFa: String(raw.aiExplanationFa || raw.aiExplanation || ''),
     posEntries,
     englishDefinition: String(raw.englishDefinition || ''),
-    contextSentenceEn: String(raw.contextSentenceEn || raw.contextSentence || raw.c || ''),
+    contextSentenceEn: String(raw.contextSentenceEn || raw.contextSentence || raw.cs || raw.c || ''),
     contextSentenceFa: String(raw.contextSentenceFa || raw.contextTranslation || raw.cf || ''),
     tatoebaExamples,
-    videoId: String(raw.videoId || 'youtube-video'),
-    videoTitle: String(raw.videoTitle || 'YouTube Video'),
-    videoTimestampSec: Number(raw.videoTimestampSec ?? raw.timestamp ?? 0),
+    videoId: String(raw.videoId || raw.vid || 'youtube-video'),
+    videoTitle: String(raw.videoTitle || raw.vt || 'YouTube Video'),
+    videoTimestampSec: Number(raw.videoTimestampSec ?? raw.timestamp ?? raw.vts ?? 0),
     box: Math.min(6, Math.max(1, box)),
     nextReviewAt: Number(raw.nextReviewAt ?? raw.nr ?? Date.now() - 1000),
     lastReviewedAt: Number(raw.lastReviewedAt ?? Date.now()),

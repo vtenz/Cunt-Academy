@@ -7,6 +7,11 @@ import {
   WORD_COLOR_PRESETS,
   DEMO_DUAL_SUBTITLES,
   DEMO_VIDEO_METADATA,
+  CURATED_YOUTUBE_STUDIO_VIDEOS,
+  StudioVideoPreset,
+  extractYouTubeVideoId,
+  parseCustomSubtitlesOrTranscript,
+  generateTopicContextualSubtitles,
   BUILTIN_DICTIONARY,
   lookupComprehensiveLocalDictionary,
   tokenizeSubtitleLine,
@@ -27,6 +32,7 @@ import {
   askGeminiWordQuestion,
   GeminiContextualAnalysis,
   WordQaTurn,
+  getStoredUserGeminiApiKey,
 } from '../services/geminiService';
 
 interface PlayerSimulatorViewProps {
@@ -49,6 +55,12 @@ interface PlayerSimulatorViewProps {
   onSaveSentence: (sentence: Omit<SavedSentence, 'id' | 'createdAt'>) => void;
   onOpenPhrasePump: () => void;
   onOpenSettingsPage: () => void;
+  selectedStudioVideo?: {
+    videoId: string;
+    videoTitle?: string;
+    timestampSec?: number;
+  } | null;
+  onOpenVideoVocabulary?: (videoId: string) => void;
 }
 
 interface LiveLookupResult {
@@ -76,8 +88,19 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
   onSaveSentence,
   onOpenPhrasePump,
   onOpenSettingsPage,
+  selectedStudioVideo,
+  onOpenVideoVocabulary,
 }) => {
-  const [cues] = useState<SubtitleCue[]>(DEMO_DUAL_SUBTITLES);
+  const [currentVideo, setCurrentVideo] = useState<StudioVideoPreset>(
+    () => CURATED_YOUTUBE_STUDIO_VIDEOS[0]
+  );
+  const [cues, setCues] = useState<SubtitleCue[]>(() => DEMO_DUAL_SUBTITLES);
+  const [youtubeUrlInput, setYoutubeUrlInput] = useState<string>('');
+  const [isLoadingYoutubeVideo, setIsLoadingYoutubeVideo] = useState<boolean>(false);
+  const [showRealYouTubeEmbed, setShowRealYouTubeEmbed] = useState<boolean>(false);
+  const [loopCurrentCue, setLoopCurrentCue] = useState<boolean>(false);
+  const [customTranscriptModalOpen, setCustomTranscriptModalOpen] = useState<boolean>(false);
+  const [customTranscriptInput, setCustomTranscriptInput] = useState<string>('');
   const [activeCueIndex, setActiveCueIndex] = useState<number>(2); // Start on Cue #3 ("We are going through a revolution right now with most people learning faster.")
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
@@ -151,6 +174,11 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
     [tokens]
   );
 
+  const currentVideoSavedCardsCount = useMemo(
+    () => cards.filter((c) => (c.videoId || DEMO_VIDEO_METADATA.videoId) === currentVideo.videoId).length,
+    [cards, currentVideo.videoId]
+  );
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2600);
@@ -198,6 +226,11 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
           showToast('توقف خودکار (AP) در پایان دیالوگ فعال شد');
           return totalWords - 1;
         }
+        // 2.5 Check A-B Single Cue Loop
+        if (loopCurrentCue) {
+          setSpokenWordCursor(0);
+          return 0;
+        }
         // 3. Otherwise advance to next subtitle cue
         setCueRevealedStep(0);
         setPhraseRange(null);
@@ -217,7 +250,162 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
     settings.hideSubtitles,
     hoveredWordInfo,
     cues.length,
+    loopCurrentCue,
   ]);
+
+  // Load or switch studio video when selectedStudioVideo prop changes (e.g., from VideoVocabularyView)
+  useEffect(() => {
+    if (!selectedStudioVideo?.videoId) return;
+    const matchCurated = CURATED_YOUTUBE_STUDIO_VIDEOS.find(
+      (v) =>
+        v.videoId === selectedStudioVideo.videoId ||
+        v.youtubeId === selectedStudioVideo.videoId
+    );
+    if (matchCurated) {
+      setCurrentVideo(matchCurated);
+      setCues(matchCurated.cues);
+      if (typeof selectedStudioVideo.timestampSec === 'number') {
+        const targetMs = selectedStudioVideo.timestampSec * 1000;
+        const cueIdx = matchCurated.cues.findIndex(
+          (c) => Math.abs(c.tStartMs - targetMs) <= 4500
+        );
+        setActiveCueIndex(cueIdx >= 0 ? cueIdx : 0);
+      } else {
+        setActiveCueIndex(0);
+      }
+      setSpokenWordCursor(0);
+      return;
+    }
+
+    // Dynamic YouTube video ID passed from VideoVocabularyView
+    const customTitle =
+      selectedStudioVideo.videoTitle || `YouTube Video (${selectedStudioVideo.videoId})`;
+    const generatedCues = generateTopicContextualSubtitles(customTitle);
+    setCurrentVideo({
+      videoId: selectedStudioVideo.videoId,
+      youtubeId: selectedStudioVideo.videoId,
+      videoTitle: customTitle,
+      channelName: 'YouTube Learning Studio',
+      durationSec: 60,
+      categoryFa: '🎬 ویدیوی اختصاصی شما',
+      cues: generatedCues,
+    });
+    setCues(generatedCues);
+    setActiveCueIndex(0);
+    setSpokenWordCursor(0);
+  }, [selectedStudioVideo]);
+
+  const handleSelectCuratedVideo = (vid: StudioVideoPreset) => {
+    setCurrentVideo(vid);
+    setCues(vid.cues);
+    setActiveCueIndex(0);
+    setSpokenWordCursor(0);
+    setPhraseRange(null);
+    setFloatingPopupOpen(false);
+    showToast(`🎬 ویدیوی «${vid.videoTitle}» در استودیو بارگذاری شد`);
+  };
+
+  const handleLoadYoutubeUrlInStudio = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const extractedId = extractYouTubeVideoId(youtubeUrlInput);
+    if (!extractedId) {
+      showToast('⚠️ لطفاً یک لینک معتبر یوتیوب (مثلاً https://youtu.be/... یا youtube.com/watch?v=...) وارد کنید.');
+      return;
+    }
+
+    // Check if it matches one of our curated videos first
+    const matchedCurated = CURATED_YOUTUBE_STUDIO_VIDEOS.find(
+      (v) => v.youtubeId === extractedId || v.videoId === extractedId
+    );
+    if (matchedCurated) {
+      handleSelectCuratedVideo(matchedCurated);
+      setShowRealYouTubeEmbed(true);
+      return;
+    }
+
+    setIsLoadingYoutubeVideo(true);
+    try {
+      let loadedTitle = `YouTube Study Video (${extractedId})`;
+      let loadedChannel = 'YouTube Channel';
+      let loadedCues: SubtitleCue[] | null = null;
+
+      try {
+        const apiRes = await fetch('/api/youtube/load', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(getStoredUserGeminiApiKey()
+              ? { 'x-user-gemini-key': getStoredUserGeminiApiKey() }
+              : {}),
+          },
+          body: JSON.stringify({ urlOrId: extractedId }),
+        });
+        if (apiRes.ok) {
+          const data = await apiRes.json();
+          if (data.videoTitle) loadedTitle = data.videoTitle;
+          if (data.channelName) loadedChannel = data.channelName;
+          if (Array.isArray(data.cues) && data.cues.length > 0) {
+            loadedCues = data.cues;
+          }
+        }
+      } catch {
+        // Fallback for static Netlify hosting: fetch title from public noembed oEmbed CORS endpoint
+      }
+
+      if (!loadedCues) {
+        try {
+          const oembedRes = await fetch(
+            `https://noembed.com/embed?url=https://www.youtube.com/watch?v=${encodeURIComponent(extractedId)}`
+          );
+          if (oembedRes.ok) {
+            const oembedJson = await oembedRes.json();
+            if (oembedJson?.title) loadedTitle = String(oembedJson.title);
+            if (oembedJson?.author_name) loadedChannel = String(oembedJson.author_name);
+          }
+        } catch {
+          // ignore
+        }
+        loadedCues = generateTopicContextualSubtitles(loadedTitle);
+      }
+
+      const newStudioVideo: StudioVideoPreset = {
+        videoId: extractedId,
+        youtubeId: extractedId,
+        videoTitle: loadedTitle,
+        channelName: loadedChannel,
+        durationSec: Math.round(
+          ((loadedCues[loadedCues.length - 1]?.tStartMs || 45000) + 5000) / 1000
+        ),
+        categoryFa: '🔗 لود شده از لینک یوتیوب',
+        cues: loadedCues,
+      };
+
+      setCurrentVideo(newStudioVideo);
+      setCues(loadedCues);
+      setActiveCueIndex(0);
+      setSpokenWordCursor(0);
+      setPhraseRange(null);
+      setShowRealYouTubeEmbed(true);
+      showToast(`✅ ویدیوی «${loadedTitle}» با موفقیت در استودیو بارگذاری شد!`);
+    } finally {
+      setIsLoadingYoutubeVideo(false);
+    }
+  };
+
+  const handleImportCustomSubtitles = (e: React.FormEvent) => {
+    e.preventDefault();
+    const parsed = parseCustomSubtitlesOrTranscript(customTranscriptInput);
+    if (parsed.length === 0) {
+      showToast('⚠️ متن یا فایل زیرنویس واردشده معتبر نیست.');
+      return;
+    }
+    setCues(parsed);
+    setActiveCueIndex(0);
+    setSpokenWordCursor(0);
+    setCustomTranscriptModalOpen(false);
+    setCustomTranscriptInput('');
+    showToast(`✅ ${toPersianDigits(parsed.length)} خط زیرنویس دلخواه با موفقیت روی این ویدیو اعمال شد!`);
+  };
 
   // Stop word-drag selection on global mouseup
   useEffect(() => {
@@ -273,8 +461,8 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
         onSaveSentence({
           sentenceEn: activeCue.textEn,
           sentenceFa: activeCue.textFa,
-          videoId: DEMO_VIDEO_METADATA.videoId,
-          videoTitle: DEMO_VIDEO_METADATA.videoTitle,
+          videoId: currentVideo.videoId,
+          videoTitle: currentVideo.videoTitle,
           timestampSec: Math.round(activeCue.tStartMs / 1000),
         });
         showToast('جمله فعلی در Saved Sentences ذخیره شد');
@@ -296,7 +484,16 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [activeCue, cues.length, onSaveSentence, onUpdateSettings, settings.autoPauseAfterCue, settings.useArrowKeys]);
+  }, [
+    activeCue,
+    cues.length,
+    currentVideo.videoId,
+    currentVideo.videoTitle,
+    onSaveSentence,
+    onUpdateSettings,
+    settings.autoPauseAfterCue,
+    settings.useArrowKeys,
+  ]);
 
   // Draggable Subtitle Box Mouse Listeners
   useEffect(() => {
@@ -661,8 +858,8 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
       posEntries: dictEntry.posEntries,
       contextSentenceEn: activeCue.textEn,
       contextSentenceFa: activeCue.textFa,
-      videoId: DEMO_VIDEO_METADATA.videoId,
-      videoTitle: DEMO_VIDEO_METADATA.videoTitle,
+      videoId: currentVideo.videoId,
+      videoTitle: currentVideo.videoTitle,
       videoTimestampSec: Number((activeCue.tStartMs / 1000).toFixed(1)),
     });
     showToast(
@@ -701,8 +898,8 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
       tatoebaExamples: currentDictEntry.tatoebaExamples,
       contextSentenceEn: activeCue.textEn,
       contextSentenceFa: activeCue.textFa,
-      videoId: DEMO_VIDEO_METADATA.videoId,
-      videoTitle: DEMO_VIDEO_METADATA.videoTitle,
+      videoId: currentVideo.videoId,
+      videoTitle: currentVideo.videoTitle,
       videoTimestampSec: Number((activeCue.tStartMs / 1000).toFixed(1)),
       box,
     });
@@ -712,12 +909,12 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
         : status === 'ignored'
           ? "Don't learn (نادیده)"
           : 'افزوده به فلش‌کارت‌های AnkiDroid';
-    showToast(`«${targetWord}» با وضعیت ${label} ذخیره شد`);
+    showToast(`«${targetWord}» در دسته ویدیوی «${currentVideo.videoTitle}» ذخیره شد`);
   };
 
   const handleExecuteExport = () => {
     if (exportFormat === 'html') {
-      const html = generatePrintableTranscriptHtml(DEMO_VIDEO_METADATA.videoTitle, cues);
+      const html = generatePrintableTranscriptHtml(currentVideo.videoTitle, cues);
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -803,6 +1000,119 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
         </div>
       )}
 
+      {/* PRO YOUTUBE URL STUDIO LOADER & MULTI-VIDEO WORKBENCH BAR */}
+      <div
+        data-testid="youtube-studio-loader-bar"
+        dir="rtl"
+        className="duo-card p-4 space-y-3"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="w-9 h-9 rounded-2xl bg-[#FF4B4B] border-b-4 border-[#EA2B2B] text-white flex items-center justify-center text-base font-black">
+              ▶
+            </span>
+            <div>
+              <h2 className="text-sm font-black duo-text-main">
+                استودیوی حرفه‌ای یوتیوب در سایت (YouTube Pro Learning Studio)
+              </h2>
+              <p className="text-[11px] font-bold duo-text-muted">
+                لینک هر ویدیوی یوتیوب را وارد کنید تا داخل سایت با دیکشنری چندمعنایی، هوش مصنوعی Gemini و تفکیک خودکار لغات آن ویدیو باز شود.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {onOpenVideoVocabulary && (
+              <button
+                type="button"
+                data-testid="open-current-video-vocab-btn"
+                onClick={() => onOpenVideoVocabulary(currentVideo.videoId)}
+                className="duo-btn duo-btn-purple px-3.5 py-2 text-xs"
+              >
+                📂 لغات ذخیره‌شده این ویدیو ({toPersianDigits(currentVideoSavedCardsCount)})
+              </button>
+            )}
+            <button
+              type="button"
+              data-testid="open-custom-subtitles-modal-btn"
+              onClick={() => setCustomTranscriptModalOpen(true)}
+              className="duo-btn duo-btn-neutral px-3 py-2 text-xs"
+            >
+              📝 الصاق زیرنویس دلخواه (.SRT / متن)
+            </button>
+            <button
+              type="button"
+              data-testid="toggle-real-youtube-embed-btn"
+              onClick={() => setShowRealYouTubeEmbed((prev) => !prev)}
+              className={`duo-btn px-3 py-2 text-xs ${
+                showRealYouTubeEmbed ? 'duo-btn-green' : 'duo-btn-blue'
+              }`}
+            >
+              {showRealYouTubeEmbed
+                ? '🎬 پلیر واقعی یوتیوب: فعال'
+                : '🎬 نمایش پلیر واقعی یوتیوب'}
+            </button>
+          </div>
+        </div>
+
+        {/* YouTube Link Input Form */}
+        <form
+          onSubmit={handleLoadYoutubeUrlInStudio}
+          className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5"
+        >
+          <div className="relative flex-1" dir="ltr">
+            <input
+              type="text"
+              data-testid="youtube-url-studio-input"
+              value={youtubeUrlInput}
+              onChange={(e) => setYoutubeUrlInput(e.target.value)}
+              placeholder="Paste YouTube URL or Video ID (e.g. https://www.youtube.com/watch?v=M7lc1UVf-VE or https://youtu.be/dQw4w9WgXcQ)"
+              className="w-full duo-surface-secondary border-2 duo-border-color rounded-2xl px-4 py-2.5 text-xs font-mono font-bold duo-text-main focus:outline-none focus:border-[#1CB0F6]"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isLoadingYoutubeVideo}
+            data-testid="youtube-url-studio-load-btn"
+            className="duo-btn duo-btn-green px-5 py-2.5 text-xs shrink-0"
+          >
+            {isLoadingYoutubeVideo ? '⏳ در حال استخراج زیرنویس...' : '🚀 لود ویدیو در استودیو'}
+          </button>
+        </form>
+
+        {/* Quick Curated Multi-Video Switcher Chips */}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <span className="text-[11px] font-black duo-text-muted">ویدیوهای آماده تمرین:</span>
+          {CURATED_YOUTUBE_STUDIO_VIDEOS.map((vid) => {
+            const isSelected = currentVideo.videoId === vid.videoId;
+            const savedCount = cards.filter(
+              (c) => (c.videoId || DEMO_VIDEO_METADATA.videoId) === vid.videoId
+            ).length;
+            return (
+              <button
+                key={vid.videoId}
+                type="button"
+                data-testid={`studio-preset-video-${vid.videoId}`}
+                onClick={() => handleSelectCuratedVideo(vid)}
+                className={`px-3 py-1.5 rounded-xl text-[11px] font-black border-2 transition-all flex items-center gap-1.5 ${
+                  isSelected
+                    ? 'bg-[#1CB0F6] border-[#1899D6] text-white'
+                    : 'duo-surface-secondary duo-border-color duo-text-main hover:border-[#1CB0F6]'
+                }`}
+              >
+                <span>{vid.categoryFa}</span>
+                <span dir="ltr" className="truncate max-w-[200px]">
+                  {vid.videoTitle}
+                </span>
+                <span className="px-1.5 py-0.5 rounded-lg bg-black/20 text-[10px] font-mono">
+                  {toPersianDigits(savedCount)} لغت
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Main Split Workspace: Left YouTube Player Stage + Right 3-Tab Cunt Academy Dock */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN (8 Cols): Interactive YouTube Player Stage */}
@@ -822,15 +1132,39 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
             }}
             className="relative min-h-[560px] bg-gradient-to-br from-[#101524] via-[#0B0D14] to-[#141122] flex flex-col justify-between p-5 select-none overflow-hidden"
           >
+            {/* Optional Real Embedded YouTube Iframe Layer */}
+            {showRealYouTubeEmbed && (
+              <div className="absolute inset-0 z-0 pointer-events-auto">
+                <iframe
+                  title={currentVideo.videoTitle}
+                  src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(
+                    currentVideo.youtubeId || 'M7lc1UVf-VE'
+                  )}?rel=0&modestbranding=1&start=${Math.floor(activeCue.tStartMs / 1000)}`}
+                  className="w-full h-full border-0 opacity-75"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B0D14] via-transparent to-[#0B0D14]/70 pointer-events-none" />
+              </div>
+            )}
+
             {/* Top Status Strip inside Video Canvas */}
             <div className="flex flex-wrap items-center justify-between gap-2 z-10">
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-violet-500/20 text-violet-300 border border-violet-500/30">
-                  {DEMO_VIDEO_METADATA.videoTitle}
+                <span
+                  data-testid="active-studio-video-title"
+                  className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-violet-500/20 text-violet-300 border border-violet-500/30"
+                >
+                  🎬 {currentVideo.videoTitle}
                 </span>
                 <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-900/90 text-slate-300 border border-slate-700/70">
-                  {formatTimestamp(activeCue.tStartMs / 1000)} / 00:52
+                  {formatTimestamp(activeCue.tStartMs / 1000)} / {formatTimestamp(currentVideo.durationSec)}
                 </span>
+                {loopCurrentCue && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/25 text-emerald-300 border border-emerald-500/40">
+                    🔁 A-B Loop فعال
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -857,15 +1191,15 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
             </div>
 
             {/* Center Visual Stage / Interactive Feature Guide */}
-            {!floatingPopupOpen && !trancyStyleDrawerOpen && !hoveredWordInfo && (
-              <div className="my-auto flex flex-col items-center justify-center text-center py-6 pointer-events-none">
+            {!floatingPopupOpen && !trancyStyleDrawerOpen && !hoveredWordInfo && !showRealYouTubeEmbed && (
+              <div className="my-auto flex flex-col items-center justify-center text-center py-6 pointer-events-none z-10">
                 <div className="text-xs uppercase tracking-widest text-violet-400/90 font-bold mb-1.5">
-                  Cunt Academy v4.7 — Instant Multi-POS Dictionary + Gemini Interactive Q&amp;A + Anki SM-2
+                  Cunt Academy Studio — {currentVideo.channelName} • ID: {currentVideo.videoId}
                 </div>
                 <p className="text-xs text-slate-400 max-w-xl leading-relaxed" dir="rtl">
-                  • <strong>دیکشنری چندمعنایی فوری (۰ میلی‌ثانیه تأخیر):</strong> روی هر کلمه کلیک یا هاور کنید تا معانی کامل آن در نقش‌های دستوری مختلف (Noun, Verb, Adjective, Phrasal Verb) فوراً نمایش داده شود.
-                  <br />• <strong>پرسش و پاسخ هوشمند از هوش مصنوعی درباره کلمه:</strong> در پنجره دیکشنری سمت راست، علاوه بر دکمه{' '}
-                  <span className="text-emerald-300 font-bold">✨ تحلیل معنی در این جمله با Gemini</span>، می‌توانید هر سوالی درباره کلمه دارید همان‌جا بپرسید!
+                  • <strong>ذخیره خودکار به تفکیک ویدیو:</strong> هر کلمه‌ای که از این ویدیو ذخیره کنید، مستقیماً در پوشه{' '}
+                  <span className="text-sky-300 font-bold">«{currentVideo.videoTitle}»</span> قرار می‌گیرد.
+                  <br />• <strong>ابزارهای استودیویی:</strong> از نوار بالا می‌توانید هر لینک یوتیوبی را لود کنید، پلیر واقعی یوتیوب را روشن کنید یا فایل زیرنویس دلخواه خود را وارد نمایید.
                 </p>
               </div>
             )}
@@ -1815,10 +2149,43 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
                     onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
                     className="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-xs text-slate-200"
                   >
+                    <option value={0.5}>0.5x</option>
                     <option value={0.75}>0.75x</option>
                     <option value={1}>1.0x</option>
                     <option value={1.25}>1.25x</option>
+                    <option value={1.5}>1.5x</option>
                   </select>
+                  <button
+                    type="button"
+                    data-testid="toggle-ab-loop-btn"
+                    onClick={() => setLoopCurrentCue((prev) => !prev)}
+                    className={`px-2.5 py-1 rounded text-xs font-bold border transition-colors ${
+                      loopCurrentCue
+                        ? 'bg-emerald-600 border-emerald-400 text-white'
+                        : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
+                    }`}
+                    title="تکرار مداوم همین دیالوگ (A-B Loop)"
+                  >
+                    🔁 A-B Loop
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="save-current-cue-sentence-btn"
+                    onClick={() => {
+                      onSaveSentence({
+                        sentenceEn: activeCue.textEn,
+                        sentenceFa: activeCue.textFa,
+                        videoId: currentVideo.videoId,
+                        videoTitle: currentVideo.videoTitle,
+                        timestampSec: Math.round(activeCue.tStartMs / 1000),
+                      });
+                      showToast(`💬 این جمله در پوشه ویدیوی «${currentVideo.videoTitle}» ذخیره شد`);
+                    }}
+                    className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold border border-amber-500/30"
+                    title="ذخیره کل این جمله زیرنویس به همراه نام ویدیو (کلید میانبر R)"
+                  >
+                    ⭐ ذخیره جمله
+                  </button>
                 </div>
 
                 {/* Right YouTube Controls: Cunt Academy [CA ON ⚙] Toggle Widget + Subtitle Style Button */}
@@ -2300,6 +2667,66 @@ export const PlayerSimulatorView: React.FC<PlayerSimulatorViewProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* CUSTOM SUBTITLES (.SRT / TRANSCRIPT) IMPORT MODAL */}
+      {customTranscriptModalOpen && (
+        <div
+          data-testid="custom-subtitles-modal"
+          onClick={() => setCustomTranscriptModalOpen(false)}
+          className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4"
+        >
+          <form
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={handleImportCustomSubtitles}
+            dir="rtl"
+            className="bg-[#161929] border border-white/15 rounded-2xl max-w-xl w-full p-5 shadow-2xl space-y-4 text-xs"
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="text-sm font-black text-white">
+                📝 الصاق زیرنویس دلخواه (.SRT / .VTT یا متن انگلیسی) برای «{currentVideo.videoTitle}»
+              </h3>
+              <button
+                type="button"
+                onClick={() => setCustomTranscriptModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-slate-300 leading-relaxed">
+              اگر ویدیوی یوتیوب شما زیرنویس آماده نداشت یا می‌خواهید متن خاص خودتان را روی این ویدیو تمرین کنید، محتوای فایل <strong>.SRT</strong> یا جملات انگلیسی را در کادر زیر Paste کنید:
+            </p>
+
+            <textarea
+              dir="ltr"
+              rows={7}
+              data-testid="custom-subtitles-textarea"
+              value={customTranscriptInput}
+              onChange={(e) => setCustomTranscriptInput(e.target.value)}
+              placeholder={`1\n00:00:02,000 --> 00:00:06,500\nSo column A in retrospect is even more impressive.\nبنابراین ستون الف در نگاه به گذشته حتی چشمگیرتر است.`}
+              className="w-full bg-[#0B0D14] border border-white/15 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-sky-400"
+            />
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCustomTranscriptModalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 font-bold"
+              >
+                انصراف
+              </button>
+              <button
+                type="submit"
+                data-testid="confirm-custom-subtitles-btn"
+                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black"
+              >
+                اعمال زیرنویس روی ویدیو
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
